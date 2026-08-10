@@ -861,11 +861,17 @@ async function updateRecordRemote(record){
 
 // Admin-only: permanently removes a row from the Sheet. See handleDeleteRecord for the confirm prompt.
 async function deleteRecordRemote(id){
-  const payload = { token: SYNC_TOKEN, action: 'delete', id: id };
+  // Uses GET (unlike create/update, which are sent no-cors and can't be read back) —
+  // this lets us return the real success/failure instead of assuming it worked.
+  const url = SYNC_URL + '?action=delete&token=' + encodeURIComponent(SYNC_TOKEN) + '&id=' + encodeURIComponent(id);
   try{
-    await fetch(SYNC_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
-    return true;
-  }catch(err){ return false; }
+    const res = await fetch(url, {method:'GET'});
+    const json = await res.json();
+    if(json.status === 'ok') return {ok: true};
+    return {ok: false, message: json.message || 'Unknown error'};
+  }catch(err){
+    return {ok: false, message: 'Could not reach the Sheet'};
+  }
 }
 
 /* ---------------- STAGE 1 SAVE ---------------- */
@@ -1259,8 +1265,8 @@ async function handleDeleteRecord(id, label){
   const confirmed = confirm('Permanently delete "'+label+'" from the Sheet? This cannot be undone.');
   if(!confirmed) return;
   toast('Deleting…');
-  const ok = await deleteRecordRemote(id);
-  if(!ok){ toast('Delete failed — check connection'); return; }
+  const result = await deleteRecordRemote(id);
+  if(!result.ok){ toast('Delete failed: ' + result.message); return; }
   records = records.filter(r => r.id !== id);
   renderRecords();
   toast('Record deleted');
