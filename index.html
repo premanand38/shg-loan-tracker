@@ -158,7 +158,7 @@
     <div id="admin-login-fields" style="display:none">
       <div class="field">
         <label>Admin Name</label>
-        <input type="text" id="admin-name" placeholder="Your name">
+        <input type="text" id="admin-name" placeholder="Your name" value="Sowmya">
       </div>
       <div class="field">
         <label>Admin Passcode</label>
@@ -301,31 +301,26 @@
       <div class="row2">
         <div class="field">
           <label>No. of SHG Members</label>
-          <input type="number" id="r_members" placeholder="e.g. 12">
+          <input type="number" id="r_members" placeholder="e.g. 12" min="1" step="1" inputmode="numeric" pattern="[0-9]*">
         </div>
         <div class="field">
           <label>Received Date &amp; Time</label>
           <input type="datetime-local" id="r_receiveddt">
         </div>
       </div>
-      <div class="field">
-        <label>District Name</label>
-        <select id="r_district">
-          <option value="">Select</option>
-          <option>Mayiladuthurai</option>
-          <option>Nagapattinam</option>
-          <option>Thiruvarur</option>
-        </select>
-      </div>
       <div class="row2">
         <div class="field">
-          <label>Block Name</label>
-          <select id="r_block" disabled><option value="">Select district first…</option></select>
+          <label>District <span class="hint">(from your branch)</span></label>
+          <input type="text" id="r_district" readonly style="background:#EFEFEA;color:var(--muted)">
         </div>
         <div class="field">
-          <label>Village / Panchayat Name</label>
-          <select id="r_village" disabled><option value="">Select block first…</option></select>
+          <label>Block <span class="hint">(from your branch)</span></label>
+          <input type="text" id="r_block" readonly style="background:#EFEFEA;color:var(--muted)">
         </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Village / Panchayat Name</label>
+        <select id="r_village" disabled><option value="">Sign in first…</option></select>
       </div>
     </div>
 
@@ -338,7 +333,7 @@
         </div>
         <div class="field">
           <label>Representative Phone</label>
-          <input type="tel" id="r_repphone" placeholder="10-digit number">
+          <input type="tel" id="r_repphone" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" pattern="[0-9]{10}">
         </div>
       </div>
       <div class="row2">
@@ -348,7 +343,7 @@
         </div>
         <div class="field">
           <label>CST Phone</label>
-          <input type="tel" id="r_cstphone" placeholder="10-digit number">
+          <input type="tel" id="r_cstphone" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric" pattern="[0-9]{10}">
         </div>
       </div>
     </div>
@@ -377,7 +372,7 @@
           <option value="">Select</option>
           <option>KYC Pending</option>
           <option>A/c Opening Pending</option>
-          <option>Photo Sheet Pending</option>
+          <option>Grading Pending</option>
           <option>Savings/Statement Pending</option>
           <option>Resolution Pending</option>
         </select>
@@ -400,9 +395,16 @@
           <option>Members are not interested</option>
         </select>
       </div>
-      <div class="field" style="margin-bottom:0">
+      <div class="field">
         <label>SHG SB A/C Name</label>
         <input type="text" id="r_sbacname" placeholder="Savings bank account name">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Account Opened for All SHG Members</label>
+        <div class="yn" data-field="r_allacopened">
+          <button type="button" data-val="Yes">Yes</button>
+          <button type="button" data-val="No">No</button>
+        </div>
       </div>
     </div>
   </div>
@@ -418,19 +420,43 @@
     <div id="loan-selected"></div>
 
     <div class="card" id="loan-form" style="display:none">
-      <h3>Loan Progress Dates</h3>
+      <h3>Loan Progress</h3>
       <div class="field">
+        <label>LOS Initiated</label>
+        <div class="yn" data-field="l_los_yn">
+          <button type="button" data-val="Yes">Yes</button>
+          <button type="button" data-val="No">No</button>
+        </div>
+      </div>
+      <div class="field conditional" id="cond_los_date">
         <label>LOS Initiated Date</label>
         <input type="date" id="l_los">
       </div>
+
       <div class="field">
+        <label>Loan Master Created</label>
+        <div class="yn" data-field="l_master_yn">
+          <button type="button" data-val="Yes">Yes</button>
+          <button type="button" data-val="No">No</button>
+        </div>
+      </div>
+      <div class="field conditional" id="cond_master_date">
         <label>Loan Master Created Date</label>
         <input type="date" id="l_master">
       </div>
+
       <div class="field">
+        <label>Loan Disbursed</label>
+        <div class="yn" data-field="l_disbursed_yn">
+          <button type="button" data-val="Yes">Yes</button>
+          <button type="button" data-val="No">No</button>
+        </div>
+      </div>
+      <div class="field conditional" id="cond_disbursed_date">
         <label>Loan Disbursed Date</label>
         <input type="date" id="l_disbursed">
       </div>
+
       <div class="field">
         <label>Loan A/c No.</label>
         <input type="text" id="l_loanacno" placeholder="Loan account number">
@@ -500,32 +526,22 @@ document.getElementById('login-branch').addEventListener('change', function(){
   }
 });
 
-/* ---------------- APPLICATION FORM: District -> Block -> Panchayat -> CST ---------------- */
-function populateBlockDropdown(){
-  const district = document.getElementById('r_district').value;
-  const blockSel = document.getElementById('r_block');
-  const villageSel = document.getElementById('r_village');
-  villageSel.innerHTML = '<option value="">Select block first…</option>';
-  villageSel.disabled = true;
-  document.getElementById('r_cstname').value = '';
-  document.getElementById('r_cstphone').value = '';
-  if(!district || !CST_DIRECTORY[district]){
-    blockSel.innerHTML = '<option value="">Select district first…</option>';
-    blockSel.disabled = true;
-    return;
-  }
-  const blocks = Object.keys(CST_DIRECTORY[district]).sort();
-  blockSel.innerHTML = '<option value="">Select block…</option>' + blocks.map(b=>`<option value="${b}">${b}</option>`).join('');
-  blockSel.disabled = false;
+/* ---------------- APPLICATION FORM: District & Block auto from branch, Panchayat -> CST ---------------- */
+function setLocationFromSession(){
+  if(!session || session.role !== 'branch') return;
+  const info = BRANCH_DIRECTORY[session.branch] || {};
+  document.getElementById('r_district').value = info.district || '';
+  document.getElementById('r_block').value = info.block || '';
+  populateVillageFromSession();
 }
-function populateVillageDropdown(){
-  const district = document.getElementById('r_district').value;
-  const block = document.getElementById('r_block').value;
+function populateVillageFromSession(){
+  const info = BRANCH_DIRECTORY[(session && session.branch) || ''] || {};
+  const district = info.district, block = info.block;
   const villageSel = document.getElementById('r_village');
   document.getElementById('r_cstname').value = '';
   document.getElementById('r_cstphone').value = '';
   if(!district || !block || !CST_DIRECTORY[district] || !CST_DIRECTORY[district][block]){
-    villageSel.innerHTML = '<option value="">Select block first…</option>';
+    villageSel.innerHTML = '<option value="">No panchayat data for this branch</option>';
     villageSel.disabled = true;
     return;
   }
@@ -535,8 +551,8 @@ function populateVillageDropdown(){
   villageSel.disabled = false;
 }
 function fillCstFromVillage(){
-  const district = document.getElementById('r_district').value;
-  const block = document.getElementById('r_block').value;
+  const info = BRANCH_DIRECTORY[(session && session.branch) || ''] || {};
+  const district = info.district, block = info.block;
   const village = document.getElementById('r_village').value;
   if(!district || !block || !village) return;
   const csts = (CST_DIRECTORY[district] && CST_DIRECTORY[district][block]) || [];
@@ -546,9 +562,8 @@ function fillCstFromVillage(){
     document.getElementById('r_cstphone').value = match.contact || '';
   }
 }
-document.getElementById('r_district').addEventListener('change', populateBlockDropdown);
-document.getElementById('r_block').addEventListener('change', populateVillageDropdown);
 document.getElementById('r_village').addEventListener('change', fillCstFromVillage);
+
 
 let session = null;
 let records = [];
@@ -609,6 +624,7 @@ document.getElementById('btn-login').addEventListener('click', async ()=>{
   document.getElementById('nav-branch').style.display = 'flex';
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
+  setLocationFromSession();
   await loadRecords();
   goTab('home');
   renderHome();
@@ -632,6 +648,7 @@ async function goTab(name){
     await loadRecords();
   }
   if(name === 'home') renderHome();
+  if(name === 'receiving') setLocationFromSession();
   if(name === 'records') renderRecords();
   if(name === 'loan') renderLoanSearch('');
   if(name === 'admin-dashboard') renderAdminDashboard();
@@ -675,6 +692,28 @@ document.getElementById('r_eligibility').addEventListener('change', function(){
   document.getElementById('cond_noteligible').classList.toggle('show', this.value === 'Not Eligible');
 });
 
+// LOS / Master / Disbursed: show the date field only when Yes is chosen
+const YN_DATE_MAP = [
+  {field: 'l_los_yn', cond: 'cond_los_date', dateInput: 'l_los'},
+  {field: 'l_master_yn', cond: 'cond_master_date', dateInput: 'l_master'},
+  {field: 'l_disbursed_yn', cond: 'cond_disbursed_date', dateInput: 'l_disbursed'}
+];
+YN_DATE_MAP.forEach(({field, cond, dateInput})=>{
+  const group = document.querySelector('.yn[data-field="'+field+'"]');
+  group.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const isYes = btn.dataset.val === 'Yes' && !(btn.classList.contains('sel-yes') && btn.dataset.active !== '1');
+      // small delay to let the generic toggle handler above run first
+      setTimeout(()=>{
+        const active = group.querySelector('button[data-active="1"]');
+        const show = active && active.dataset.val === 'Yes';
+        document.getElementById(cond).classList.toggle('show', show);
+        if(!show) document.getElementById(dateInput).value = '';
+      }, 0);
+    });
+  });
+});
+
 /* ---------------- STORAGE (Google Sheet via Apps Script) ---------------- */
 // Paste your deployed Apps Script Web App URL here after running Code.gs's setup steps.
 const SYNC_URL = "https://script.google.com/macros/s/AKfycbzTtXi6l58gEi1Tb6og4hST43X0yJSdRIFNgF7i8N01QGOkzDjjJEJVB4ouh5tJ9ruFug/exec";
@@ -709,8 +748,12 @@ async function loadRecords(){
         eligibility: r['Loan Eligibility Status'],
         notEligibleReason: r['If Not Eligible'],
         sbAcName: r['SHG SB A/C Name'],
+        allAcOpened: r['Account Opened for All Members (Y/N)'],
+        losYN: r['LOS Initiated (Y/N)'],
         los: r['LOS Initiated Date'],
+        masterYN: r['Loan Master Created (Y/N)'],
         master: r['Loan Master Created Date'],
+        disbursedYN: r['Loan Disbursed (Y/N)'],
         disbursed: r['Loan Disbursed Date'],
         loanAcNo: r['LOAN A/c NO'],
         disbursedMembers: r['Loan Disbursed to Individual Members Date'],
@@ -739,8 +782,10 @@ async function createRecordRemote(entry){
       village: entry.village, block: entry.block, district: entry.district,
       rating: entry.rating, appStatus: entry.appStatus, notCompleteReason: entry.notCompleteReason,
       eligibility: entry.eligibility, notEligibleReason: entry.notEligibleReason,
-      sbAcName: entry.sbAcName, los: entry.los, master: entry.master,
-      disbursed: entry.disbursed, loanAcNo: entry.loanAcNo || '', disbursedMembers: entry.disbursedMembers, loggedAt: entry.loggedAt
+      sbAcName: entry.sbAcName, allAcOpened: entry.allAcOpened || '',
+      losYN: entry.losYN || '', los: entry.los, masterYN: entry.masterYN || '', master: entry.master,
+      disbursedYN: entry.disbursedYN || '', disbursed: entry.disbursed,
+      loanAcNo: entry.loanAcNo || '', disbursedMembers: entry.disbursedMembers, loggedAt: entry.loggedAt
     }
   };
   try{
@@ -752,7 +797,9 @@ async function createRecordRemote(entry){
 async function updateRecordRemote(record){
   const payload = {
     token: SYNC_TOKEN, action: 'update', id: record.id,
-    los: record.los, master: record.master, disbursed: record.disbursed,
+    losYN: record.losYN || '', los: record.los,
+    masterYN: record.masterYN || '', master: record.master,
+    disbursedYN: record.disbursedYN || '', disbursed: record.disbursed,
     loanAcNo: record.loanAcNo || '', disbursedMembers: record.disbursedMembers
   };
   try{
@@ -765,20 +812,30 @@ async function updateRecordRemote(record){
 function clearStage1(){
   ["r_shgname","r_members","r_receiveddt","r_repname","r_repphone",
    "r_cstname","r_cstphone","r_sbacname"].forEach(id=>{ document.getElementById(id).value=""; });
-  document.getElementById('r_district').value = "";
   document.getElementById('r_appstatus').value = "";
   document.getElementById('r_eligibility').value = "";
   document.getElementById('r_notcompletereason').value = "";
   document.getElementById('r_noteligiblereason').value = "";
   document.getElementById('cond_notcomplete').classList.remove('show');
   document.getElementById('cond_noteligible').classList.remove('show');
-  populateBlockDropdown();
+  setLocationFromSession();
   resetYN('r_rating');
+  resetYN('r_allacopened');
 }
 
 document.getElementById('btn-save-receiving').addEventListener('click', async ()=>{
   const shgname = document.getElementById('r_shgname').value.trim();
   if(!shgname){ toast('SHG name is required'); return; }
+
+  const members = document.getElementById('r_members').value.trim();
+  if(members && !/^[0-9]+$/.test(members)){ toast('No. of SHG Members must be a whole number'); return; }
+
+  const repPhone = document.getElementById('r_repphone').value.trim();
+  if(repPhone && !/^[0-9]{10}$/.test(repPhone)){ toast('Representative Phone must be exactly 10 digits'); return; }
+
+  const cstPhone = document.getElementById('r_cstphone').value.trim();
+  if(cstPhone && !/^[0-9]{10}$/.test(cstPhone)){ toast('CST Phone must be exactly 10 digits'); return; }
+
   const entry = {
     id: 'A' + Date.now().toString(36).toUpperCase(),
     receivedDateTime: document.getElementById('r_receiveddt').value || new Date().toISOString().slice(0,16),
@@ -786,11 +843,11 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
     branchCode: session.code,
     managerName: session.name,
     shgName: shgname,
-    members: document.getElementById('r_members').value.trim(),
+    members: members,
     repName: document.getElementById('r_repname').value.trim(),
-    repPhone: document.getElementById('r_repphone').value.trim(),
+    repPhone: repPhone,
     cstName: document.getElementById('r_cstname').value.trim(),
-    cstPhone: document.getElementById('r_cstphone').value.trim(),
+    cstPhone: cstPhone,
     village: document.getElementById('r_village').value.trim(),
     block: document.getElementById('r_block').value.trim(),
     district: document.getElementById('r_district').value || session.district,
@@ -800,7 +857,9 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
     eligibility: document.getElementById('r_eligibility').value,
     notEligibleReason: document.getElementById('r_noteligiblereason').value,
     sbAcName: document.getElementById('r_sbacname').value.trim(),
-    los: "", master: "", disbursed: "", loanAcNo: "", disbursedMembers: "",
+    allAcOpened: getYN('r_allacopened'),
+    losYN: "", los: "", masterYN: "", master: "", disbursedYN: "", disbursed: "",
+    loanAcNo: "", disbursedMembers: "",
     loggedAt: new Date().toISOString().slice(0,16).replace('T',' ')
   };
   toast('Saving…');
@@ -836,15 +895,34 @@ function renderLoanSearch(query){
   }).join('');
 }
 
+function setYN(fieldName, value){
+  const group = document.querySelector('.yn[data-field="'+fieldName+'"]');
+  group.querySelectorAll('button').forEach(b=>{b.classList.remove('sel-yes','sel-no'); b.dataset.active='';});
+  if(value === 'Yes' || value === 'No'){
+    const btn = group.querySelector('button[data-val="'+value+'"]');
+    if(btn){ btn.classList.add(value === 'Yes' ? 'sel-yes' : 'sel-no'); btn.dataset.active = '1'; }
+  }
+}
+
 function selectCase(id){
   selectedCaseId = id;
   const r = records.find(x=>x.id===id);
   if(!r) return;
   document.getElementById('loan-selected').innerHTML =
     '<div class="selected-case"><div class="t">'+r.shgName+'</div>'+r.branchName+' · '+r.village+' · Received '+r.receivedDateTime+'</div>';
+
   document.getElementById('l_los').value = r.los || "";
+  setYN('l_los_yn', r.losYN || (r.los ? 'Yes' : ''));
+  document.getElementById('cond_los_date').classList.toggle('show', !!(r.losYN === 'Yes' || r.los));
+
   document.getElementById('l_master').value = r.master || "";
+  setYN('l_master_yn', r.masterYN || (r.master ? 'Yes' : ''));
+  document.getElementById('cond_master_date').classList.toggle('show', !!(r.masterYN === 'Yes' || r.master));
+
   document.getElementById('l_disbursed').value = r.disbursed || "";
+  setYN('l_disbursed_yn', r.disbursedYN || (r.disbursed ? 'Yes' : ''));
+  document.getElementById('cond_disbursed_date').classList.toggle('show', !!(r.disbursedYN === 'Yes' || r.disbursed));
+
   document.getElementById('l_loanacno').value = r.loanAcNo || "";
   document.getElementById('l_disbursedmembers').value = r.disbursedMembers || "";
   document.getElementById('loan-form').style.display = 'block';
@@ -857,15 +935,22 @@ function clearStage2(){
   document.getElementById('loan-selected').innerHTML = '';
   document.getElementById('loan-form').style.display = 'none';
   ["l_los","l_master","l_disbursed","l_loanacno","l_disbursedmembers"].forEach(id=>document.getElementById(id).value="");
+  resetYN('l_los_yn'); resetYN('l_master_yn'); resetYN('l_disbursed_yn');
+  document.getElementById('cond_los_date').classList.remove('show');
+  document.getElementById('cond_master_date').classList.remove('show');
+  document.getElementById('cond_disbursed_date').classList.remove('show');
 }
 
 document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
   if(!selectedCaseId){ toast('Search and select an application first'); return; }
   const r = records.find(x=>x.id===selectedCaseId);
   if(!r) return;
-  r.los = document.getElementById('l_los').value;
-  r.master = document.getElementById('l_master').value;
-  r.disbursed = document.getElementById('l_disbursed').value;
+  r.losYN = getYN('l_los_yn');
+  r.los = r.losYN === 'Yes' ? document.getElementById('l_los').value : '';
+  r.masterYN = getYN('l_master_yn');
+  r.master = r.masterYN === 'Yes' ? document.getElementById('l_master').value : '';
+  r.disbursedYN = getYN('l_disbursed_yn');
+  r.disbursed = r.disbursedYN === 'Yes' ? document.getElementById('l_disbursed').value : '';
   r.loanAcNo = document.getElementById('l_loanacno').value.trim();
   r.disbursedMembers = document.getElementById('l_disbursedmembers').value;
   toast('Saving…');
@@ -1086,8 +1171,9 @@ const EXPORT_HEADERS = [
   "Received Date & Time","Branch Name","Branch Code","Manager Name","SHG Name","No. of SHG Members",
   "Representative Name & Phone Number","CST Name & Phone Number","Village Name","Block Name","District Name",
   "Rating Received with APO/BMM Sign","Loan Application Status","If Not Complete","Loan Eligibility Status",
-  "If Not Eligible","SHG SB A/C Name","LOS Initiated Date","Loan Master Created Date","Loan Disbursed Date",
-  "LOAN A/c NO","Loan Disbursed to Individual Members Date"
+  "If Not Eligible","SHG SB A/C Name","Account Opened for All Members (Y/N)",
+  "LOS Initiated (Y/N)","LOS Initiated Date","Loan Master Created (Y/N)","Loan Master Created Date",
+  "Loan Disbursed (Y/N)","Loan Disbursed Date","LOAN A/c NO","Loan Disbursed to Individual Members Date"
 ];
 
 document.getElementById('btn-export-page').addEventListener('click', ()=>{
@@ -1110,8 +1196,12 @@ document.getElementById('btn-export-page').addEventListener('click', ()=>{
     "Loan Eligibility Status": r.eligibility || "",
     "If Not Eligible": r.notEligibleReason || "",
     "SHG SB A/C Name": r.sbAcName || "",
+    "Account Opened for All Members (Y/N)": r.allAcOpened || "",
+    "LOS Initiated (Y/N)": r.losYN || "",
     "LOS Initiated Date": r.los || "",
+    "Loan Master Created (Y/N)": r.masterYN || "",
     "Loan Master Created Date": r.master || "",
+    "Loan Disbursed (Y/N)": r.disbursedYN || "",
     "Loan Disbursed Date": r.disbursed || "",
     "LOAN A/c NO": r.loanAcNo || "",
     "Loan Disbursed to Individual Members Date": r.disbursedMembers || ""
