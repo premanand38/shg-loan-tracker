@@ -12,7 +12,7 @@
     --red:#A23B3B; --red-bg:#F7E8E8; --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:"IBM Plex Sans","Segoe UI",Arial,sans-serif;background:var(--paper);color:var(--ink-deep);-webkit-font-smoothing:antialiased;}
+  body{margin:0;font-family:"IBM Plex Sans","Segoe UI",Arial,sans-serif;background:var(--paper);color:var(--ink-deep);-webkit-font-smoothing:antialiased;overflow-x:hidden;}
 
   /* ---------- LOGIN ---------- */
   #login-screen{
@@ -29,7 +29,7 @@
   .login-card .field{ margin-bottom:14px; }
   .login-card label{ display:block; font-size:12.5px; font-weight:600; margin-bottom:5px; }
   .login-card input, .login-card select{
-    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:7px; font-size:15px; background:#FCFCFA; font-family:inherit;
+    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:7px; font-size:16px; background:#FCFCFA; font-family:inherit;
   }
   .login-card button{
     width:100%; padding:13px 0; border:none; border-radius:8px; background:var(--ink); color:#fff; font-weight:700; font-size:14.5px; margin-top:6px; cursor:pointer;
@@ -65,7 +65,7 @@
   .field label{ display:block; font-size:12.5px; font-weight:600; margin-bottom:5px; }
   .field .hint{ font-weight:400; color:var(--muted); font-size:11px; }
   input[type=text],input[type=tel],input[type=date],input[type=datetime-local],input[type=number],select,textarea{
-    width:100%; padding:10px 11px; border:1px solid var(--line); border-radius:7px; font-size:15px; background:#FCFCFA; color:var(--ink-deep); font-family:inherit;
+    width:100%; padding:10px 11px; border:1px solid var(--line); border-radius:7px; font-size:16px; background:#FCFCFA; color:var(--ink-deep); font-family:inherit;
   }
   input:focus,select:focus,textarea:focus{ outline:2px solid var(--ink); outline-offset:1px; background:#fff; }
   .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
@@ -120,6 +120,20 @@
 
   .toast{ position:fixed; top:100px; left:50%; transform:translateX(-50%); background:var(--ink-deep); color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; z-index:60; opacity:0; transition:opacity .25s, top .25s; pointer-events:none; }
   .toast.show{ opacity:1; top:76px; }
+
+  /* Narrow phones (iPhone SE, small Androids): stack two-column rows, keep long
+     branch/district names from overflowing their fixed-width chart labels. */
+  @media (max-width: 400px){
+    .row2{ grid-template-columns: 1fr; }
+    .stat-grid{ grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat .num{ font-size: 21px; }
+    .barrow .lbl{ width: 84px; font-size: 11px; white-space: normal; line-height: 1.25; }
+    .band{ padding: 12px 12px; }
+    .login-card h1{ font-size: 18px; }
+    .login-card{ padding: 24px 18px; }
+    table{ font-size: 11px; }
+    th, td{ padding: 5px 6px; }
+  }
 </style>
 </head>
 <body>
@@ -574,6 +588,7 @@ let session = null;
 let records = [];
 let selectedCaseId = null;
 let loginMode = 'branch';
+let rowWarningShown = false;
 
 function toast(msg){
   const t = document.getElementById('toast');
@@ -591,7 +606,7 @@ document.getElementById('toggle-login-mode').addEventListener('click', (e)=>{
 });
 
 // Change this passcode, and tell your admins the new one.
-const ADMIN_PASSCODE = "IOB-ADMIN-2026";
+const ADMIN_PASSCODE = "1500";
 
 /* ---------------- LOGIN ---------------- */
 document.getElementById('btn-login').addEventListener('click', async ()=>{
@@ -754,10 +769,10 @@ async function loadRecords(){
         managerName: r['Manager Name'],
         shgName: r['SHG Name'],
         members: r['No. of SHG Members'],
-        repName: (r['Representative Name & Phone Number']||'').split(' / ')[0]||'',
-        repPhone: (r['Representative Name & Phone Number']||'').split(' / ')[1]||'',
-        cstName: (r['CST Name & Phone Number']||'').split(' / ')[0]||'',
-        cstPhone: (r['CST Name & Phone Number']||'').split(' / ')[1]||'',
+        repName: r['Representative Name'] || '',
+        repPhone: r['Representative Phone'] || '',
+        cstName: r['CST Name'] || '',
+        cstPhone: r['CST Phone'] || '',
         village: r['Village Name'],
         block: r['Block Name'],
         district: r['District Name'],
@@ -778,6 +793,10 @@ async function loadRecords(){
         disbursedMembers: r['Loan Disbursed to Individual Members Date'],
         loggedAt: r['Logged At']
       }));
+      if(json.warning && session && session.role === 'admin' && !rowWarningShown){
+        rowWarningShown = true;
+        toast(json.warning);
+      }
     } else {
       records = [];
       toast('Could not load records from sheet');
@@ -796,8 +815,8 @@ async function createRecordRemote(entry){
       id: entry.id, receivedDateTime: entry.receivedDateTime, branchName: entry.branchName,
       branchCode: entry.branchCode, managerName: entry.managerName, shgName: entry.shgName,
       members: entry.members,
-      repCombined: [entry.repName, entry.repPhone].filter(Boolean).join(' / '),
-      cstCombined: [entry.cstName, entry.cstPhone].filter(Boolean).join(' / '),
+      repName: entry.repName || '', repPhone: entry.repPhone || '',
+      cstName: entry.cstName || '', cstPhone: entry.cstPhone || '',
       village: entry.village, block: entry.block, district: entry.district,
       rating: entry.rating, appStatus: entry.appStatus, notCompleteReason: entry.notCompleteReason,
       eligibility: entry.eligibility, notEligibleReason: entry.notEligibleReason,
@@ -821,6 +840,15 @@ async function updateRecordRemote(record){
     disbursedYN: record.disbursedYN || '', disbursed: record.disbursed,
     loanAcNo: record.loanAcNo || '', disbursedMembers: record.disbursedMembers
   };
+  try{
+    await fetch(SYNC_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
+    return true;
+  }catch(err){ return false; }
+}
+
+// Admin-only: permanently removes a row from the Sheet. See handleDeleteRecord for the confirm prompt.
+async function deleteRecordRemote(id){
+  const payload = { token: SYNC_TOKEN, action: 'delete', id: id };
   try{
     await fetch(SYNC_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
     return true;
@@ -1166,12 +1194,15 @@ function renderRecords(){
   document.getElementById('rec_total').textContent = records.length;
   document.getElementById('rec_stage2').textContent = records.filter(r=>r.los).length;
   const body = document.getElementById('records_body');
+  const isAdmin = session && session.role === 'admin';
   if(records.length === 0){
     body.innerHTML = '<div class="empty"><div class="big">☐</div>No applications logged yet.</div>';
     return;
   }
   let html = '<div class="table-wrap"><table><thead><tr>';
-  ['SHG Name','Branch','Village','District','App Status','Eligibility','Disbursed','Logged'].forEach(h=>html += '<th>'+h+'</th>');
+  const cols = ['SHG Name','Branch','Village','District','App Status','Eligibility','Disbursed','Logged'];
+  if(isAdmin) cols.push('');
+  cols.forEach(h=>html += '<th>'+h+'</th>');
   html += '</tr></thead><tbody>';
   [...records].reverse().forEach(r=>{
     html += '<tr>';
@@ -1183,16 +1214,30 @@ function renderRecords(){
     html += '<td>'+eligBadge(r.eligibility)+'</td>';
     html += '<td>'+(r.disbursedMembers ? badge('Yes','y') : badge('','blank'))+'</td>';
     html += '<td>'+(r.loggedAt||'–')+'</td>';
+    if(isAdmin){
+      html += '<td><button class="btn-ghost" style="padding:4px 10px;font-size:11px;border-radius:6px;color:var(--red);border-color:var(--red)" onclick="handleDeleteRecord(\''+r.id+'\',\''+(r.shgName||'this record').replace(/'/g,"\\'")+'\')">Delete</button></td>';
+    }
     html += '</tr>';
   });
   html += '</tbody></table></div>';
   body.innerHTML = html;
 }
 
+async function handleDeleteRecord(id, label){
+  const confirmed = confirm('Permanently delete "'+label+'" from the Sheet? This cannot be undone.');
+  if(!confirmed) return;
+  toast('Deleting…');
+  const ok = await deleteRecordRemote(id);
+  if(!ok){ toast('Delete failed — check connection'); return; }
+  records = records.filter(r => r.id !== id);
+  renderRecords();
+  toast('Record deleted');
+}
+
 /* ---------------- EXPORT ---------------- */
 const EXPORT_HEADERS = [
   "Received Date & Time","Branch Name","Branch Code","Manager Name","SHG Name","No. of SHG Members",
-  "Representative Name & Phone Number","CST Name & Phone Number","Village Name","Block Name","District Name",
+  "Representative Name","Representative Phone","CST Name","CST Phone","Village Name","Block Name","District Name",
   "Rating Received with APO/BMM Sign","Loan Application Status","If Not Complete","Loan Eligibility Status",
   "If Not Eligible","SHG SB A/C Name","Account Opened for All Members (Y/N)",
   "LOS Initiated (Y/N)","LOS Initiated Date","Loan Master Created (Y/N)","Loan Master Created Date",
@@ -1208,8 +1253,10 @@ document.getElementById('btn-export-page').addEventListener('click', ()=>{
     "Manager Name": r.managerName || "",
     "SHG Name": r.shgName || "",
     "No. of SHG Members": r.members || "",
-    "Representative Name & Phone Number": [r.repName, r.repPhone].filter(Boolean).join(' / '),
-    "CST Name & Phone Number": [r.cstName, r.cstPhone].filter(Boolean).join(' / '),
+    "Representative Name": r.repName || "",
+    "Representative Phone": r.repPhone || "",
+    "CST Name": r.cstName || "",
+    "CST Phone": r.cstPhone || "",
     "Village Name": r.village || "",
     "Block Name": r.block || "",
     "District Name": r.district || "",
