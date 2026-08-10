@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SHG Loan Tracker — IOB Nagapattinam Region II</title>
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root{
@@ -410,8 +412,8 @@
         </select>
       </div>
       <div class="field">
-        <label>SHG SB A/C Name</label>
-        <input type="text" id="r_sbacname" placeholder="Savings bank account name">
+        <label>SHG SB Account Number</label>
+        <input type="text" id="r_sbacname" placeholder="15-digit account number" maxlength="15" inputmode="numeric" pattern="[0-9]{15}">
       </div>
       <div class="field" style="margin-bottom:0">
         <label>Account Opened for All SHG Members</label>
@@ -463,7 +465,7 @@
 
       <div class="field conditional" id="step_loanacno">
         <label>Loan A/c No.</label>
-        <input type="text" id="l_loanacno" placeholder="Loan account number">
+        <input type="text" id="l_loanacno" placeholder="15-digit loan account number" maxlength="15" inputmode="numeric" pattern="[0-9]{15}">
       </div>
 
       <div class="conditional" id="step_disbursed">
@@ -781,7 +783,7 @@ async function loadRecords(){
         notCompleteReason: r['If Not Complete'],
         eligibility: r['Loan Eligibility Status'],
         notEligibleReason: r['If Not Eligible'],
-        sbAcName: r['SHG SB A/C Name'],
+        sbAcName: r['SHG SB Account Number'],
         allAcOpened: r['Account Opened for All Members (Y/N)'],
         losYN: r['LOS Initiated (Y/N)'],
         los: r['LOS Initiated Date'],
@@ -883,6 +885,9 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
   const cstPhone = document.getElementById('r_cstphone').value.trim();
   if(cstPhone && !/^[0-9]{10}$/.test(cstPhone)){ toast('CST Phone must be exactly 10 digits'); return; }
 
+  const sbAcNumber = document.getElementById('r_sbacname').value.trim();
+  if(sbAcNumber && !/^[0-9]{15}$/.test(sbAcNumber)){ toast('SHG SB Account Number must be exactly 15 digits'); return; }
+
   const entry = {
     id: 'A' + Date.now().toString(36).toUpperCase(),
     receivedDateTime: document.getElementById('r_receiveddt').value || new Date().toISOString().slice(0,16),
@@ -903,7 +908,7 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
     notCompleteReason: document.getElementById('r_notcompletereason').value,
     eligibility: document.getElementById('r_eligibility').value,
     notEligibleReason: document.getElementById('r_noteligiblereason').value,
-    sbAcName: document.getElementById('r_sbacname').value.trim(),
+    sbAcName: sbAcNumber,
     allAcOpened: getYN('r_allacopened'),
     losYN: "", los: "", masterYN: "", master: "", disbursedYN: "", disbursed: "",
     loanAcNo: "", disbursedMembers: "",
@@ -996,13 +1001,17 @@ document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
   if(!selectedCaseId){ toast('Search and select an application first'); return; }
   const r = records.find(x=>x.id===selectedCaseId);
   if(!r) return;
+
+  const loanAcNo = document.getElementById('l_loanacno').value.trim();
+  if(loanAcNo && !/^[0-9]{15}$/.test(loanAcNo)){ toast('Loan A/c No. must be exactly 15 digits'); return; }
+
   r.losYN = getYN('l_los_yn');
   r.los = r.losYN === 'Yes' ? document.getElementById('l_los').value : '';
   r.masterYN = getYN('l_master_yn');
   r.master = r.masterYN === 'Yes' ? document.getElementById('l_master').value : '';
   r.disbursedYN = getYN('l_disbursed_yn');
   r.disbursed = r.disbursedYN === 'Yes' ? document.getElementById('l_disbursed').value : '';
-  r.loanAcNo = document.getElementById('l_loanacno').value.trim();
+  r.loanAcNo = loanAcNo;
   r.disbursedMembers = document.getElementById('l_disbursedmembers').value;
   toast('Saving…');
   const ok = await updateRecordRemote(r);
@@ -1201,11 +1210,14 @@ function renderRecords(){
   }
   let html = '<div class="table-wrap"><table><thead><tr>';
   const cols = ['SHG Name','Branch','Village','District','App Status','Eligibility','Disbursed','Logged'];
-  if(isAdmin) cols.push('');
+  if(isAdmin) cols.unshift('');
   cols.forEach(h=>html += '<th>'+h+'</th>');
   html += '</tr></thead><tbody>';
   [...records].reverse().forEach(r=>{
     html += '<tr>';
+    if(isAdmin){
+      html += '<td><button class="btn-ghost" style="padding:4px 10px;font-size:11px;border-radius:6px;color:var(--red);border-color:var(--red)" onclick="handleDeleteRecord(\''+r.id+'\',\''+(r.shgName||'this record').replace(/'/g,"\\'")+'\')">Delete</button></td>';
+    }
     html += '<td>'+(r.shgName||'–')+'</td>';
     html += '<td>'+(r.branchName||'–')+'</td>';
     html += '<td>'+(r.village||'–')+'</td>';
@@ -1214,9 +1226,6 @@ function renderRecords(){
     html += '<td>'+eligBadge(r.eligibility)+'</td>';
     html += '<td>'+(r.disbursedMembers ? badge('Yes','y') : badge('','blank'))+'</td>';
     html += '<td>'+(r.loggedAt||'–')+'</td>';
-    if(isAdmin){
-      html += '<td><button class="btn-ghost" style="padding:4px 10px;font-size:11px;border-radius:6px;color:var(--red);border-color:var(--red)" onclick="handleDeleteRecord(\''+r.id+'\',\''+(r.shgName||'this record').replace(/'/g,"\\'")+'\')">Delete</button></td>';
-    }
     html += '</tr>';
   });
   html += '</tbody></table></div>';
@@ -1239,7 +1248,7 @@ const EXPORT_HEADERS = [
   "Received Date & Time","Branch Name","Branch Code","Manager Name","SHG Name","No. of SHG Members",
   "Representative Name","Representative Phone","CST Name","CST Phone","Village Name","Block Name","District Name",
   "Rating Received with APO/BMM Sign","Loan Application Status","If Not Complete","Loan Eligibility Status",
-  "If Not Eligible","SHG SB A/C Name","Account Opened for All Members (Y/N)",
+  "If Not Eligible","SHG SB Account Number","Account Opened for All Members (Y/N)",
   "LOS Initiated (Y/N)","LOS Initiated Date","Loan Master Created (Y/N)","Loan Master Created Date",
   "Loan Disbursed (Y/N)","Loan Disbursed Date","LOAN A/c NO","Loan Disbursed to Individual Members Date"
 ];
@@ -1265,7 +1274,7 @@ document.getElementById('btn-export-page').addEventListener('click', ()=>{
     "If Not Complete": r.notCompleteReason || "",
     "Loan Eligibility Status": r.eligibility || "",
     "If Not Eligible": r.notEligibleReason || "",
-    "SHG SB A/C Name": r.sbAcName || "",
+    "SHG SB Account Number": r.sbAcName || "",
     "Account Opened for All Members (Y/N)": r.allAcOpened || "",
     "LOS Initiated (Y/N)": r.losYN || "",
     "LOS Initiated Date": r.los || "",
