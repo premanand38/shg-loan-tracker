@@ -709,6 +709,17 @@ function resetYN(fieldName){
 /* conditional fields */
 document.getElementById('r_appstatus').addEventListener('change', function(){
   document.getElementById('cond_notcomplete').classList.toggle('show', this.value === 'Not Complete');
+
+  // If the application was never received, it can't be eligible — force and lock
+  // the eligibility field so it stays consistent.
+  const eligSel = document.getElementById('r_eligibility');
+  if(this.value === 'Not Received'){
+    eligSel.value = 'Not Eligible';
+    eligSel.disabled = true;
+    document.getElementById('cond_noteligible').classList.add('show');
+  } else {
+    eligSel.disabled = false;
+  }
 });
 document.getElementById('r_eligibility').addEventListener('change', function(){
   document.getElementById('cond_noteligible').classList.toggle('show', this.value === 'Not Eligible');
@@ -863,6 +874,7 @@ function clearStage1(){
    "r_cstname","r_cstphone","r_sbacname"].forEach(id=>{ document.getElementById(id).value=""; });
   document.getElementById('r_appstatus').value = "";
   document.getElementById('r_eligibility').value = "";
+  document.getElementById('r_eligibility').disabled = false;
   document.getElementById('r_notcompletereason').value = "";
   document.getElementById('r_noteligiblereason').value = "";
   document.getElementById('cond_notcomplete').classList.remove('show');
@@ -1022,14 +1034,22 @@ document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
 
 /* ---------------- HOME ---------------- */
 function renderHome(){
-  document.getElementById('h_total').textContent = records.length;
-  document.getElementById('h_sanctioned').textContent = records.filter(r=>r.disbursedMembers).length;
-  document.getElementById('h_pending').textContent = records.filter(r=>r.appStatus && r.appStatus !== 'Complete').length;
-  document.getElementById('h_stage2ready').textContent = records.filter(r=>r.eligibility==='Eligible' && r.appStatus==='Complete' && !r.los).length;
+  // Branch managers should only see their own branch's numbers here —
+  // the region-wide view lives in the separate Admin dashboard.
+  const myRecords = (session && session.role === 'branch')
+    ? records.filter(r => r.branchName === session.branch)
+    : records;
 
-  const byDistrict = {};
-  records.forEach(r=>{ const d = r.district || 'Unspecified'; byDistrict[d] = (byDistrict[d]||0)+1; });
-  const pairs = Object.entries(byDistrict).sort((a,b)=>b[1]-a[1]);
+  document.getElementById('h_total').textContent = myRecords.length;
+  document.getElementById('h_sanctioned').textContent = myRecords.filter(r=>r.disbursedMembers).length;
+  document.getElementById('h_pending').textContent = myRecords.filter(r=>r.appStatus && r.appStatus !== 'Complete').length;
+  document.getElementById('h_stage2ready').textContent = myRecords.filter(r=>r.eligibility==='Eligible' && r.appStatus==='Complete' && !r.los).length;
+
+  // District is constant within one branch, so break down by village instead —
+  // more useful at branch level.
+  const byVillage = {};
+  myRecords.forEach(r=>{ const v = r.village || 'Unspecified'; byVillage[v] = (byVillage[v]||0)+1; });
+  const pairs = Object.entries(byVillage).sort((a,b)=>b[1]-a[1]);
   const bars = document.getElementById('h_bars');
   if(pairs.length === 0){ bars.innerHTML = '<div class="hint" style="color:var(--muted); font-size:12px">No data yet</div>'; return; }
   const maxVal = Math.max(...pairs.map(p=>p[1]));
@@ -1200,11 +1220,14 @@ function eligBadge(e){
 }
 
 function renderRecords(){
-  document.getElementById('rec_total').textContent = records.length;
-  document.getElementById('rec_stage2').textContent = records.filter(r=>r.los).length;
+  const myRecords = (session && session.role === 'branch')
+    ? records.filter(r => r.branchName === session.branch)
+    : records;
+  document.getElementById('rec_total').textContent = myRecords.length;
+  document.getElementById('rec_stage2').textContent = myRecords.filter(r=>r.los).length;
   const body = document.getElementById('records_body');
   const isAdmin = session && session.role === 'admin';
-  if(records.length === 0){
+  if(myRecords.length === 0){
     body.innerHTML = '<div class="empty"><div class="big">☐</div>No applications logged yet.</div>';
     return;
   }
@@ -1213,7 +1236,7 @@ function renderRecords(){
   if(isAdmin) cols.unshift('');
   cols.forEach(h=>html += '<th>'+h+'</th>');
   html += '</tr></thead><tbody>';
-  [...records].reverse().forEach(r=>{
+  [...myRecords].reverse().forEach(r=>{
     html += '<tr>';
     if(isAdmin){
       html += '<td><button class="btn-ghost" style="padding:4px 10px;font-size:11px;border-radius:6px;color:var(--red);border-color:var(--red)" onclick="handleDeleteRecord(\''+r.id+'\',\''+(r.shgName||'this record').replace(/'/g,"\\'")+'\')">Delete</button></td>';
@@ -1254,8 +1277,11 @@ const EXPORT_HEADERS = [
 ];
 
 document.getElementById('btn-export-page').addEventListener('click', ()=>{
-  if(records.length === 0){ toast('No records yet'); return; }
-  const rows = records.map(r=>({
+  const myRecords = (session && session.role === 'branch')
+    ? records.filter(r => r.branchName === session.branch)
+    : records;
+  if(myRecords.length === 0){ toast('No records yet'); return; }
+  const rows = myRecords.map(r=>({
     "Received Date & Time": r.receivedDateTime || "",
     "Branch Name": r.branchName || "",
     "Branch Code": r.branchCode || "",
@@ -1290,7 +1316,7 @@ document.getElementById('btn-export-page').addEventListener('click', ()=>{
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "SHG Tracker");
   XLSX.writeFile(wb, "SHG_Loan_Tracker_" + new Date().toISOString().slice(0,10) + ".xlsx");
-  toast('Exported ' + records.length + ' rows');
+  toast('Exported ' + myRecords.length + ' rows');
 });
 </script>
 </body>
