@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHG Loan Tracker — IOB Nagapattinam Region II</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --ink:#1B3A5C; --ink-deep:#0F2743; --paper:#F6F5F1; --card:#FFFFFF; --line:#DDD9CE;
+    --muted:#6B7280; --amber:#B5772E; --amber-bg:#FBEEDD; --green:#2E6B4F; --green-bg:#E6F0EA;
+    --red:#A23B3B; --red-bg:#F7E8E8; --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"IBM Plex Sans","Segoe UI",Arial,sans-serif;background:var(--paper);color:var(--ink-deep);-webkit-font-smoothing:antialiased;}
+
+  /* ---------- LOGIN ---------- */
+  #login-screen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;
+    background: linear-gradient(180deg, var(--ink) 0%, var(--ink-deep) 100%);
+  }
+  .login-card{
+    background:var(--card); border-radius:12px; padding:30px 24px; width:100%; max-width:380px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.3);
+  }
+  .login-card .mark{ font-family:var(--mono); font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .login-card h1{ margin:0 0 4px; font-size:21px; }
+  .login-card .sub{ font-size:12.5px; color:var(--muted); margin-bottom:22px; }
+  .login-card .field{ margin-bottom:14px; }
+  .login-card label{ display:block; font-size:12.5px; font-weight:600; margin-bottom:5px; }
+  .login-card input, .login-card select{
+    width:100%; padding:11px 12px; border:1px solid var(--line); border-radius:7px; font-size:15px; background:#FCFCFA; font-family:inherit;
+  }
+  .login-card button{
+    width:100%; padding:13px 0; border:none; border-radius:8px; background:var(--ink); color:#fff; font-weight:700; font-size:14.5px; margin-top:6px; cursor:pointer;
+  }
+  .login-note{ font-size:11px; color:var(--muted); margin-top:14px; line-height:1.5; }
+
+  /* ---------- APP SHELL ---------- */
+  #app{ display:none; }
+  .band{ background:var(--ink); color:#fff; padding:14px 16px; position:sticky; top:0; z-index:30; border-bottom:3px solid var(--ink-deep); display:flex; justify-content:space-between; align-items:center; }
+  .band .who{ font-size:12px; }
+  .band .who b{ font-weight:700; }
+  .band .who .role{ display:block; font-family:var(--mono); font-size:10.5px; opacity:.75; }
+  .band .logout{ font-size:11px; color:#fff; opacity:.8; background:rgba(255,255,255,.12); border:none; border-radius:20px; padding:6px 12px; cursor:pointer; }
+
+  nav.tabs{ display:flex; overflow-x:auto; background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:54px; z-index:29; }
+  nav.tabs .tab{
+    flex:0 0 auto; padding:12px 16px; font-size:12.5px; font-weight:600; color:var(--muted); cursor:pointer; white-space:nowrap;
+    border-bottom:2px solid transparent;
+  }
+  nav.tabs .tab.active{ color:var(--ink); border-bottom-color:var(--ink); }
+
+  .panel{ display:none; padding:16px 14px 90px; max-width:760px; margin:0 auto; }
+  .panel.active{ display:block; }
+
+  .stagehead{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .stagehead .num{ font-family:var(--mono); font-size:12px; background:var(--ink); color:#fff; border-radius:50%; width:26px; height:26px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .stagehead h2{ margin:0; font-size:16px; }
+  .stagehead .d{ font-size:12px; color:var(--muted); margin-top:1px; }
+
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:14px; }
+  .card h3{ font-size:11.5px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted); margin:0 0 12px; padding-bottom:8px; border-bottom:1px dashed var(--line); font-family:var(--mono); }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:12.5px; font-weight:600; margin-bottom:5px; }
+  .field .hint{ font-weight:400; color:var(--muted); font-size:11px; }
+  input[type=text],input[type=tel],input[type=date],input[type=datetime-local],input[type=number],select,textarea{
+    width:100%; padding:10px 11px; border:1px solid var(--line); border-radius:7px; font-size:15px; background:#FCFCFA; color:var(--ink-deep); font-family:inherit;
+  }
+  input:focus,select:focus,textarea:focus{ outline:2px solid var(--ink); outline-offset:1px; background:#fff; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  select{ appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%236B7280'/></svg>"); background-repeat:no-repeat; background-position:right 12px center; padding-right:30px; }
+
+  .yn{ display:flex; gap:8px; }
+  .yn button{ flex:1; padding:9px 0; border-radius:7px; border:1px solid var(--line); background:#FCFCFA; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; }
+  .yn button.sel-yes{ background:var(--green-bg); border-color:var(--green); color:var(--green); }
+  .yn button.sel-no{ background:var(--red-bg); border-color:var(--red); color:var(--red); }
+
+  .conditional{ display:none; }
+  .conditional.show{ display:block; }
+
+  .submitbar{ position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--line); padding:10px 12px calc(10px + env(safe-area-inset-bottom)); display:flex; gap:10px; z-index:28; }
+  .btn{ flex:1; padding:13px 0; border-radius:8px; border:none; font-size:14.5px; font-weight:700; cursor:pointer; }
+  .btn-primary{ background:var(--ink); color:#fff; }
+  .btn-ghost{ background:transparent; color:var(--muted); border:1px solid var(--line); }
+
+  .search-box{ display:flex; gap:8px; margin-bottom:14px; }
+  .search-box input{ flex:1; }
+  .searchres{ background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:14px; }
+  .searchres .row{ padding:12px 14px; border-bottom:1px solid var(--line); cursor:pointer; }
+  .searchres .row:last-child{ border-bottom:none; }
+  .searchres .row:hover{ background:var(--paper); }
+  .searchres .row .t{ font-weight:700; font-size:13.5px; }
+  .searchres .row .m{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .selected-case{ background:var(--amber-bg); border:1px solid var(--amber); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:12.5px; }
+  .selected-case .t{ font-weight:700; color:var(--ink-deep); margin-bottom:2px; }
+
+  .stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px; }
+  .stat{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .stat .num{ font-family:var(--mono); font-size:24px; font-weight:700; }
+  .stat .lab{ font-size:11px; color:var(--muted); margin-top:2px; }
+  .barrow{ display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; }
+  .barrow .lbl{ width:110px; flex-shrink:0; font-weight:600; }
+  .barrow .track{ flex:1; height:8px; background:#EEEEEC; border-radius:4px; overflow:hidden; }
+  .barrow .fill{ height:100%; background:var(--ink); }
+  .barrow .val{ width:26px; text-align:right; font-family:var(--mono); color:var(--muted); }
+
+  table{ width:100%; border-collapse:collapse; font-size:12px; background:var(--card); }
+  th,td{ border:1px solid var(--line); padding:6px 8px; text-align:left; white-space:nowrap; }
+  th{ background:var(--paper); font-family:var(--mono); font-size:10.5px; text-transform:uppercase; color:var(--muted); position:sticky; top:0; }
+  .table-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:8px; margin-bottom:14px; }
+  .badge{ padding:2px 7px; border-radius:20px; font-size:10.5px; font-weight:700; }
+  .badge-y,.badge-complete,.badge-eligible{ background:var(--green-bg); color:var(--green); }
+  .badge-n,.badge-notcomplete,.badge-noteligible{ background:var(--red-bg); color:var(--red); }
+  .badge-notreceived{ background:var(--amber-bg); color:var(--amber); }
+  .badge-blank{ background:#EEEEEC; color:var(--muted); }
+
+  .empty{ text-align:center; padding:40px 20px; color:var(--muted); }
+  .empty .big{ font-size:34px; margin-bottom:6px; }
+
+  .toast{ position:fixed; top:100px; left:50%; transform:translateX(-50%); background:var(--ink-deep); color:#fff; padding:10px 18px; border-radius:8px; font-size:13px; z-index:60; opacity:0; transition:opacity .25s, top .25s; pointer-events:none; }
+  .toast.show{ opacity:1; top:76px; }
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="mark">IOB · Nagapattinam Region II</div>
+    <h1>SHG Loan Tracker</h1>
+    <div class="sub">Sign in to log applications and loan progress from your branch.</div>
+
+    <div id="branch-login-fields">
+    <div class="field">
+      <label>District</label>
+      <select id="login-district">
+        <option value="">Select</option>
+        <option>Nagapattinam</option>
+        <option>Mayiladuthurai</option>
+        <option>Thiruvarur</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Branch Name</label>
+      <select id="login-branch" disabled><option value="">Select district first…</option></select>
+    </div>
+    <div class="field">
+      <label>Branch Code <span class="hint" style="font-weight:400;color:var(--muted)">(type if known — not all codes on file)</span></label>
+      <input type="text" id="login-code" placeholder="e.g. 1472">
+    </div>
+    <div class="field">
+      <label>Branch Manager Name</label>
+      <input type="text" id="login-name" placeholder="Your name">
+    </div>
+    </div>
+
+    <div id="admin-login-fields" style="display:none">
+      <div class="field">
+        <label>Admin Name</label>
+        <input type="text" id="admin-name" placeholder="Your name">
+      </div>
+      <div class="field">
+        <label>Admin Passcode</label>
+        <input type="text" id="admin-passcode" placeholder="Passcode">
+      </div>
+    </div>
+
+    <button id="btn-login">Sign in</button>
+    <div style="text-align:center; margin-top:10px">
+      <a href="#" id="toggle-login-mode" style="font-size:12px; color:var(--muted); text-decoration:underline">Admin sign in instead</a>
+    </div>
+    <div class="login-note">Sign-in identifies your entries — it isn't a secured login. All entries go into the shared regional register, visible to anyone using this link.</div>
+    <div id="sync-status" class="login-note" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app">
+  <div class="band">
+    <div class="who"><b id="who-name">—</b><span class="role" id="who-branch">—</span></div>
+    <button class="logout" id="btn-logout">Switch user</button>
+  </div>
+
+  <nav class="tabs" id="nav-branch">
+    <div class="tab active" data-tab="home">Home</div>
+    <div class="tab" data-tab="receiving">Application</div>
+    <div class="tab" data-tab="loan">Sanction</div>
+    <div class="tab" data-tab="records">Records</div>
+    <div class="tab" data-tab="export">Export</div>
+  </nav>
+
+  <nav class="tabs" id="nav-admin" style="display:none">
+    <div class="tab active" data-tab="admin-dashboard">Dashboard</div>
+    <div class="tab" data-tab="admin-coverage">Branch Coverage</div>
+    <div class="tab" data-tab="admin-sanctions">Sanctions</div>
+    <div class="tab" data-tab="records">Records</div>
+    <div class="tab" data-tab="export">Export</div>
+  </nav>
+
+  <!-- HOME -->
+  <div class="panel active" id="panel-home">
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="h_total">0</div><div class="lab">Applications logged</div></div>
+      <div class="stat"><div class="num" id="h_sanctioned">0</div><div class="lab">Fully disbursed</div></div>
+      <div class="stat"><div class="num" id="h_pending">0</div><div class="lab">Application incomplete</div></div>
+      <div class="stat"><div class="num" id="h_stage2ready">0</div><div class="lab">Eligible, awaiting loan stage</div></div>
+    </div>
+    <div class="card">
+      <h3>Status by District</h3>
+      <div class="barrow" id="h_bars"></div>
+    </div>
+    <div class="card">
+      <h3>Quick Actions</h3>
+      <div class="field"><button class="btn btn-primary" style="width:100%" onclick="goTab('receiving')">+ Log new application</button></div>
+      <div class="field" style="margin-bottom:0"><button class="btn btn-ghost" style="width:100%" onclick="goTab('loan')">Update loan progress</button></div>
+    </div>
+  </div>
+
+  <!-- ADMIN: DASHBOARD -->
+  <div class="panel" id="panel-admin-dashboard">
+    <div class="stagehead"><div class="num">A</div><div><h2>Dashboard</h2><div class="d">Applications received across the region</div></div></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="ad_today">0</div><div class="lab">Applications today</div></div>
+      <div class="stat"><div class="num" id="ad_week">0</div><div class="lab">This week</div></div>
+      <div class="stat"><div class="num" id="ad_month">0</div><div class="lab">This month</div></div>
+      <div class="stat"><div class="num" id="ad_total">0</div><div class="lab">All time</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="ad_sanc_today">0</div><div class="lab">Sanctioned today</div></div>
+      <div class="stat"><div class="num" id="ad_sanc_week">0</div><div class="lab">Sanctioned this week</div></div>
+      <div class="stat"><div class="num" id="ad_sanc_month">0</div><div class="lab">Sanctioned this month</div></div>
+      <div class="stat"><div class="num" id="ad_disbursed">0</div><div class="lab">Fully disbursed, all time</div></div>
+    </div>
+    <div class="card">
+      <h3>Applications Received — Last 14 Days</h3>
+      <div class="barrow" id="ad_trend"></div>
+    </div>
+    <div class="card">
+      <h3>Application Status</h3>
+      <div class="barrow" id="ad_status"></div>
+    </div>
+    <div class="card">
+      <h3>Eligibility</h3>
+      <div class="barrow" id="ad_eligibility"></div>
+    </div>
+  </div>
+
+  <!-- ADMIN: BRANCH COVERAGE -->
+  <div class="panel" id="panel-admin-coverage">
+    <div class="stagehead"><div class="num">B</div><div><h2>Branch Coverage</h2><div class="d">Which branches have — and haven't — logged applications</div></div></div>
+    <div class="card">
+      <h3>Period</h3>
+      <select id="coverage-period">
+        <option value="week">This week</option>
+        <option value="month" selected>This month</option>
+        <option value="all">All time</option>
+      </select>
+    </div>
+    <div class="card">
+      <h3>Nil-Application Branches <span class="hint" id="ac_nil_count"></span></h3>
+      <div id="ac_nil_list"></div>
+    </div>
+    <div class="card">
+      <h3>Top Branches by Applications</h3>
+      <div class="barrow" id="ac_leaderboard"></div>
+    </div>
+  </div>
+
+  <!-- ADMIN: SANCTIONS -->
+  <div class="panel" id="panel-admin-sanctions">
+    <div class="stagehead"><div class="num">C</div><div><h2>Sanctions</h2><div class="d">Loan sanction &amp; disbursement activity</div></div></div>
+    <div class="card">
+      <h3>Disbursed — Last 14 Days</h3>
+      <div class="barrow" id="as_daily"></div>
+    </div>
+    <div class="card">
+      <h3>Disbursed — Last 8 Weeks</h3>
+      <div class="barrow" id="as_weekly"></div>
+    </div>
+    <div class="card">
+      <h3>Disbursed — This Year, by Month</h3>
+      <div class="barrow" id="as_monthly"></div>
+    </div>
+    <div class="card">
+      <h3>Average Turnaround</h3>
+      <div class="stat"><div class="num" id="as_turnaround">–</div><div class="lab">days, received → disbursed</div></div>
+    </div>
+  </div>
+
+  <!-- STAGE 1: APPLICATION RECEIVING -->
+  <div class="panel" id="panel-receiving">
+    <div class="stagehead"><div class="num">1</div><div><h2>Application</h2><div class="d">Logged when a CST/BC brings in an SHG loan application</div></div></div>
+
+    <div class="card">
+      <h3>SHG &amp; Branch Details</h3>
+      <div class="field">
+        <label>SHG Name</label>
+        <input type="text" id="r_shgname" placeholder="Self Help Group name">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>No. of SHG Members</label>
+          <input type="number" id="r_members" placeholder="e.g. 12">
+        </div>
+        <div class="field">
+          <label>Received Date &amp; Time</label>
+          <input type="datetime-local" id="r_receiveddt">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Village Name</label>
+          <input type="text" id="r_village" placeholder="Village">
+        </div>
+        <div class="field">
+          <label>Block Name</label>
+          <input type="text" id="r_block" placeholder="Block">
+        </div>
+      </div>
+      <div class="field">
+        <label>District Name</label>
+        <select id="r_district">
+          <option value="">Select</option>
+          <option>Mayiladuthurai</option>
+          <option>Nagapattinam</option>
+          <option>Tiruvarur</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Contacts</h3>
+      <div class="row2">
+        <div class="field">
+          <label>Representative Name</label>
+          <input type="text" id="r_repname" placeholder="Representative name">
+        </div>
+        <div class="field">
+          <label>Representative Phone</label>
+          <input type="tel" id="r_repphone" placeholder="10-digit number">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>CST Name</label>
+          <input type="text" id="r_cstname" placeholder="CST name">
+        </div>
+        <div class="field">
+          <label>CST Phone</label>
+          <input type="tel" id="r_cstphone" placeholder="10-digit number">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Status</h3>
+      <div class="field">
+        <label>Rating Received with APO/BMM Sign</label>
+        <div class="yn" data-field="r_rating">
+          <button type="button" data-val="Yes">Yes</button>
+          <button type="button" data-val="No">No</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Loan Application Status</label>
+        <select id="r_appstatus">
+          <option value="">Select</option>
+          <option>Complete</option>
+          <option>Not Complete</option>
+          <option>Not Received</option>
+        </select>
+      </div>
+      <div class="field conditional" id="cond_notcomplete">
+        <label>If Not Complete</label>
+        <select id="r_notcompletereason">
+          <option value="">Select</option>
+          <option>KYC Pending</option>
+          <option>A/c Opening Pending</option>
+          <option>Photo Sheet Pending</option>
+          <option>Savings/Statement Pending</option>
+          <option>Resolution Pending</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Loan Eligibility Status</label>
+        <select id="r_eligibility">
+          <option value="">Select</option>
+          <option>Eligible</option>
+          <option>Not Eligible</option>
+        </select>
+      </div>
+      <div class="field conditional" id="cond_noteligible">
+        <label>If Not Eligible</label>
+        <select id="r_noteligiblereason">
+          <option value="">Select</option>
+          <option>Cibil issue for representative</option>
+          <option>Cibil issues for Members</option>
+          <option>Dispute with SHG Members</option>
+          <option>Members are not interested</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>SHG SB A/C Name</label>
+        <input type="text" id="r_sbacname" placeholder="Savings bank account name">
+      </div>
+    </div>
+  </div>
+
+  <!-- STAGE 2: LOAN DETAILS -->
+  <div class="panel" id="panel-loan">
+    <div class="stagehead"><div class="num">2</div><div><h2>Sanction</h2><div class="d">Search for an application already on file, then record its sanction &amp; disbursement progress</div></div></div>
+
+    <div class="search-box">
+      <input type="text" id="loan-search" placeholder="Search by SHG name, branch or village...">
+    </div>
+    <div class="searchres" id="loan-searchres"></div>
+    <div id="loan-selected"></div>
+
+    <div class="card" id="loan-form" style="display:none">
+      <h3>Loan Progress Dates</h3>
+      <div class="field">
+        <label>LOS Initiated Date</label>
+        <input type="date" id="l_los">
+      </div>
+      <div class="field">
+        <label>Loan Master Created Date</label>
+        <input type="date" id="l_master">
+      </div>
+      <div class="field">
+        <label>Loan Disbursed Date</label>
+        <input type="date" id="l_disbursed">
+      </div>
+      <div class="field">
+        <label>Loan A/c No.</label>
+        <input type="text" id="l_loanacno" placeholder="Loan account number">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Loan Disbursed to Individual Members Date</label>
+        <input type="date" id="l_disbursedmembers">
+      </div>
+    </div>
+  </div>
+
+  <!-- RECORDS -->
+  <div class="panel" id="panel-records">
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="rec_total">0</div><div class="lab">Total records</div></div>
+      <div class="stat"><div class="num" id="rec_stage2">0</div><div class="lab">Loan stage started</div></div>
+    </div>
+    <div id="records_body"></div>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="panel" id="panel-export">
+    <div class="card">
+      <h3>Export</h3>
+      <p style="font-size:13px; color:var(--muted); margin-top:0">
+        Downloads an .xlsx with the exact column headers used in the regional SHG Tracker sheet, so rows can be pasted directly in.
+      </p>
+      <button class="btn btn-primary" style="width:100%" id="btn-export-page">Download .xlsx</button>
+    </div>
+  </div>
+
+  <div class="submitbar" id="bar-receiving" style="display:none">
+    <button class="btn btn-ghost" onclick="clearStage1()">Clear</button>
+    <button class="btn btn-primary" id="btn-save-receiving">Save Application</button>
+  </div>
+  <div class="submitbar" id="bar-loan" style="display:none">
+    <button class="btn btn-ghost" onclick="clearStage2()">Cancel</button>
+    <button class="btn btn-primary" id="btn-save-loan">Save Loan Progress</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BRANCH_DIRECTORY = {"KOLLIDAM":{"district":"Mayiladuthurai","block":"KOLLIDAM","manager":"Somnath Mukhuty","phone":"9230433449"},"THIRUMULLIVASAL":{"district":"Mayiladuthurai","block":"KOLLIDAM","manager":"Praveenkumar A S P","phone":"8438344756"},"ELANTHANGUDI":{"district":"Mayiladuthurai","block":"KUTHALAM","manager":"Anand C T","phone":"9946478199"},"KILIYANUR":{"district":"Mayiladuthurai","block":"KUTHALAM","manager":"Raghavendran N","phone":"7598286462"},"KODIMANGALAM":{"district":"Mayiladuthurai","block":"KUTHALAM","manager":"Prithiviraj Selvaraj","phone":"9566799509"},"KUTTALAM":{"district":"Mayiladuthurai","block":"KUTHALAM","manager":"Anubama K","phone":"9095453190"},"THEREZHUNDUR":{"district":"Mayiladuthurai","block":"KUTHALAM","manager":"","phone":""},"THIRUVAVADUTHURAI":{"district":"Mayiladuthurai","block":"KUTHALAM","manager":"","phone":""},"DIST COLLECTORATE":{"district":"Mayiladuthurai","block":"MAYILADUTHURAI","manager":"Sundaravadivel M A","phone":"9025078862"},"MANALMEDU":{"district":"Mayiladuthurai","block":"MAYILADUTHURAI","manager":"L Gokulnath","phone":"9003417847"},"MAYILADUTHURAI JUNCTION":{"district":"Mayiladuthurai","block":"MAYILADUTHURAI","manager":"","phone":""},"MAYILADUTHURAI MAIN":{"district":"Mayiladuthurai","block":"MAYILADUTHURAI","manager":"Sundaravadivel M A","phone":"9025078862"},"NIDUR":{"district":"Mayiladuthurai","block":"MAYILADUTHURAI","manager":"Natarajan","phone":"8610944287"},"AKKUR":{"district":"Mayiladuthurai","block":"SEMBANARKOIL","manager":"Nishanth K N","phone":"9566011036"},"SANKARANPANDAL":{"district":"Mayiladuthurai","block":"SEMBANARKOIL","manager":"","phone":""},"SEMBANARKOIL":{"district":"Mayiladuthurai","block":"SEMBANARKOIL","manager":"","phone":""},"PORAIYAR":{"district":"Mayiladuthurai","block":"SEMBANARKOIL","manager":"","phone":""},"THIRUKALACHERRY":{"district":"Mayiladuthurai","block":"SEMBANARKOIL","manager":"","phone":""},"VADAKARAI":{"district":"Mayiladuthurai","block":"SEMBANARKOIL","manager":"","phone":""},"KAVERIPOOMPATTINAM":{"district":"Mayiladuthurai","block":"SIRKALI","manager":"Karthikeyan M","phone":"8778156655"},"PUNGANUR":{"district":"Mayiladuthurai","block":"SIRKALI","manager":"","phone":""},"SIRKALI":{"district":"Mayiladuthurai","block":"SIRKALI","manager":"","phone":""},"VAITHEESWARAN KOIL":{"district":"Mayiladuthurai","block":"SIRKALI","manager":"","phone":""},"KEELAIYUR":{"district":"Nagapattinam","block":"KEELAIYUR","manager":"Ajeeth Kanth","phone":"9524842497"},"VELANGANNI":{"district":"Nagapattinam","block":"KEELAIYUR","manager":"","phone":""},"VILUNDAMAVADI":{"district":"Nagapattinam","block":"KEELAIYUR","manager":"","phone":""},"NAGAPATTINAM":{"district":"Nagapattinam","block":"NAGAPATTINAM","manager":"Saravanan T","phone":"8098891568"},"AZHIYUR":{"district":"Nagapattinam","block":"NAGAPATTINAM","manager":"","phone":""},"DIST COURT NAGAPATTINAM":{"district":"Nagapattinam","block":"NAGAPATTINAM","manager":"Karthick T","phone":"9952328955"},"NAGAPATTINAM MEDICAL COLLEGE":{"district":"Nagapattinam","block":"NAGAPATTINAM","manager":"Ananda Priya Tr","phone":"8072553940"},"NAGORE":{"district":"Nagapattinam","block":"NAGAPATTINAM","manager":"S Sundararaman","phone":"8939595831"},"SIKKAL":{"district":"Nagapattinam","block":"NAGAPATTINAM","manager":"","phone":""},"ENANGUDI":{"district":"Nagapattinam","block":"THIRUMARUGAL","manager":"Karthikeyan V","phone":"8778156655"},"KANKALANCHERRY":{"district":"Nagapattinam","block":"THIRUMARUGAL","manager":"Rohit Kumar","phone":"8789118164"},"PAKKAM KOTTUR":{"district":"Nagapattinam","block":"THIRUMARUGAL","manager":"","phone":""},"THITTACHERRY":{"district":"Nagapattinam","block":"THIRUMARUGAL","manager":"","phone":""},"AYAKARANPULAM":{"district":"Nagapattinam","block":"VEDARANYAM","manager":"Avadhesh Kumar Agyat","phone":"9916256314"},"THOPPUTHURAI":{"district":"Nagapattinam","block":"VEDARANYAM","manager":"","phone":""},"THULASIYAPATTINAM":{"district":"Nagapattinam","block":"VEDARANYAM","manager":"","phone":""},"KODAVASAL":{"district":"Thiruvarur","block":"KODAVASAL","manager":"Kannan Muthukannu","phone":"9940261834"},"MANAVALANALLUR":{"district":"Thiruvarur","block":"KODAVASAL","manager":"","phone":""},"ATHIKADAI":{"district":"Thiruvarur","block":"KORADACHERI","manager":"Rajasekaran M","phone":"9962230621"},"ELAVANGARGUDI":{"district":"Thiruvarur","block":"KORADACHERI","manager":"Sudharsan S","phone":"9080646525"},"KULLIKARAI":{"district":"Thiruvarur","block":"KORADACHERI","manager":"","phone":""},"VILAMAL":{"district":"Thiruvarur","block":"KORADACHERI","manager":"","phone":""},"THIRUMAKOTTAI":{"district":"Thiruvarur","block":"KOTTUR","manager":"","phone":""},"KOOTHANALLUR":{"district":"Thiruvarur","block":"MANNARGUDI","manager":"Yogeshwari D","phone":"9003850808"},"LAKSHMANGUDI":{"district":"Thiruvarur","block":"MANNARGUDI","manager":"Bhuvaneswari","phone":"9629223895"},"MANNARGUDI":{"district":"Thiruvarur","block":"MANNARGUDI","manager":"Varagani Anil Babu","phone":"7416624430"},"ULLIKOTTAI":{"district":"Thiruvarur","block":"MANNARGUDI","manager":"","phone":""},"MUTHUPET":{"district":"Thiruvarur","block":"MUTHUPETTAI","manager":"Ashish Kumar Kanaujia","phone":"8090447554"},"THILLIVILAGAM":{"district":"Thiruvarur","block":"MUTHUPETTAI","manager":"","phone":""},"NANNILAM":{"district":"Thiruvarur","block":"NANNILAM","manager":"Aruloli K","phone":"9600466586"},"POONTHOTTAM":{"district":"Thiruvarur","block":"NANNILAM","manager":"","phone":""},"AGARAPODAKUDI":{"district":"Thiruvarur","block":"NEEDAMANGALAM","manager":"M Divya Bharathi","phone":"9047738554"},"EDAMELAIYUR":{"district":"Thiruvarur","block":"NEEDAMANGALAM","manager":"Pabitha S","phone":"9965512512"},"KATTIMEDU":{"district":"Thiruvarur","block":"THIRUTHURAIPOONDI","manager":"Dhrubajyoti Lagachu","phone":"7339386433"},"THIRUTHURAIPOONDI":{"district":"Thiruvarur","block":"THIRUTHURAIPOONDI","manager":"","phone":""},"ADIYAKAMANGALAM":{"district":"Thiruvarur","block":"THIRUVARUR","manager":"Mahiban A","phone":"9940527787"},"KODIKALPALAYAM":{"district":"Thiruvarur","block":"THIRUVARUR","manager":"Eswara Naga Kiran Boda","phone":"8522966924"},"NILAKIDI":{"district":"Thiruvarur","block":"THIRUVARUR","manager":"Suresh Kumar Meena","phone":"9461775625"},"THANDALAI":{"district":"Thiruvarur","block":"THIRUVARUR","manager":"","phone":""},"TIRUVARUR":{"district":"Thiruvarur","block":"THIRUVARUR","manager":"","phone":""},"AVOOR":{"district":"Thiruvarur","block":"VALANGAIMAN","manager":"Arvind Sharma","phone":"9887063361"},"VALANGAIMAN":{"district":"Thiruvarur","block":"VALANGAIMAN","manager":"","phone":""}};
+
+function populateBranchDropdown(){
+  const district = document.getElementById('login-district').value;
+  const sel = document.getElementById('login-branch');
+  if(!district){ sel.innerHTML = '<option value="">Select district first…</option>'; sel.disabled = true; return; }
+  const names = Object.keys(BRANCH_DIRECTORY).filter(b => BRANCH_DIRECTORY[b].district === district).sort();
+  sel.innerHTML = '<option value="">Select branch…</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
+  sel.disabled = false;
+}
+document.getElementById('login-district').addEventListener('change', populateBranchDropdown);
+document.getElementById('login-branch').addEventListener('change', function(){
+  const info = BRANCH_DIRECTORY[this.value];
+  if(info && info.manager){
+    document.getElementById('login-name').value = info.manager;
+  }
+});
+
+let session = null;
+let records = [];
+let selectedCaseId = null;
+let loginMode = 'branch';
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+/* ---------------- LOGIN MODE TOGGLE ---------------- */
+document.getElementById('toggle-login-mode').addEventListener('click', (e)=>{
+  e.preventDefault();
+  loginMode = loginMode === 'branch' ? 'admin' : 'branch';
+  document.getElementById('branch-login-fields').style.display = loginMode === 'branch' ? 'block' : 'none';
+  document.getElementById('admin-login-fields').style.display = loginMode === 'admin' ? 'block' : 'none';
+  document.getElementById('toggle-login-mode').textContent = loginMode === 'branch' ? 'Admin sign in instead' : 'Branch sign in instead';
+});
+
+// Change this passcode, and tell your admins the new one.
+const ADMIN_PASSCODE = "IOB-ADMIN-2026";
+
+/* ---------------- LOGIN ---------------- */
+document.getElementById('btn-login').addEventListener('click', async ()=>{
+  if(!syncConfigured()){
+    document.getElementById('sync-status').textContent = 'Sync URL not configured yet — ask whoever set up this app to paste the Apps Script URL into SYNC_URL near the top of the script.';
+    return;
+  }
+
+  if(loginMode === 'admin'){
+    const adminName = document.getElementById('admin-name').value.trim();
+    const passcode = document.getElementById('admin-passcode').value.trim();
+    if(!adminName || !passcode){ toast('Enter your name and passcode'); return; }
+    if(passcode !== ADMIN_PASSCODE){ toast('Incorrect passcode'); return; }
+    session = {name: adminName, role: 'admin'};
+    document.getElementById('who-name').textContent = adminName;
+    document.getElementById('who-branch').textContent = 'Regional Admin';
+    document.getElementById('nav-branch').style.display = 'none';
+    document.getElementById('nav-admin').style.display = 'flex';
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    await loadRecords();
+    goTab('admin-dashboard');
+    return;
+  }
+
+  const name = document.getElementById('login-name').value.trim();
+  const branch = document.getElementById('login-branch').value.trim();
+  const code = document.getElementById('login-code').value.trim();
+  const district = document.getElementById('login-district').value;
+  if(!name || !branch){ toast('Enter your name and branch'); return; }
+  session = {name, branch, code, district, role: 'branch'};
+  document.getElementById('who-name').textContent = name;
+  document.getElementById('who-branch').textContent = branch + (code ? ' · '+code : '');
+  document.getElementById('nav-admin').style.display = 'none';
+  document.getElementById('nav-branch').style.display = 'flex';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  await loadRecords();
+  goTab('home');
+  renderHome();
+});
+
+document.getElementById('btn-logout').addEventListener('click', ()=>{
+  session = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+});
+
+/* ---------------- NAV ---------------- */
+async function goTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id === 'panel-'+name));
+  document.getElementById('bar-receiving').style.display = name === 'receiving' ? 'flex' : 'none';
+  document.getElementById('bar-loan').style.display = name === 'loan' ? 'flex' : 'none';
+  const needsRefresh = ['home','records','loan','export','admin-dashboard','admin-coverage','admin-sanctions'];
+  if(needsRefresh.includes(name)){
+    toast('Refreshing…');
+    await loadRecords();
+  }
+  if(name === 'home') renderHome();
+  if(name === 'records') renderRecords();
+  if(name === 'loan') renderLoanSearch('');
+  if(name === 'admin-dashboard') renderAdminDashboard();
+  if(name === 'admin-coverage') renderBranchCoverage();
+  if(name === 'admin-sanctions') renderSanctionsAnalysis();
+}
+document.querySelectorAll('nav.tabs .tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>goTab(tab.dataset.tab));
+});
+document.getElementById('coverage-period')?.addEventListener('change', renderBranchCoverage);
+
+
+/* ---------------- YES/NO TOGGLES ---------------- */
+document.querySelectorAll('.yn').forEach(group=>{
+  group.querySelectorAll('button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const already = btn.classList.contains('sel-yes') || btn.classList.contains('sel-no');
+      group.querySelectorAll('button').forEach(b=>{b.classList.remove('sel-yes','sel-no'); b.dataset.active='';});
+      if(!already){
+        btn.classList.add(btn.dataset.val === 'Yes' ? 'sel-yes' : 'sel-no');
+        btn.dataset.active = '1';
+      }
+    });
+  });
+});
+function getYN(fieldName){
+  const group = document.querySelector('.yn[data-field="'+fieldName+'"]');
+  const active = group.querySelector('button[data-active="1"]');
+  return active ? active.dataset.val : "";
+}
+function resetYN(fieldName){
+  const group = document.querySelector('.yn[data-field="'+fieldName+'"]');
+  group.querySelectorAll('button').forEach(b=>{b.classList.remove('sel-yes','sel-no'); b.dataset.active='';});
+}
+
+/* conditional fields */
+document.getElementById('r_appstatus').addEventListener('change', function(){
+  document.getElementById('cond_notcomplete').classList.toggle('show', this.value === 'Not Complete');
+});
+document.getElementById('r_eligibility').addEventListener('change', function(){
+  document.getElementById('cond_noteligible').classList.toggle('show', this.value === 'Not Eligible');
+});
+
+/* ---------------- STORAGE (Google Sheet via Apps Script) ---------------- */
+// Paste your deployed Apps Script Web App URL here after running Code.gs's setup steps.
+const SYNC_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+const SYNC_TOKEN = "IOB-SHG-TRACKER-2026"; // must match TOKEN in Code.gs
+
+function syncConfigured(){ return SYNC_URL && SYNC_URL.indexOf('PASTE_YOUR') === -1; }
+
+async function loadRecords(){
+  if(!syncConfigured()){ records = []; return; }
+  try{
+    const res = await fetch(SYNC_URL, {method:'GET'});
+    const json = await res.json();
+    if(json.status === 'ok'){
+      records = json.records.map(r => ({
+        id: r['Record ID'],
+        receivedDateTime: r['Received Date & Time'],
+        branchName: r['Branch Name'],
+        branchCode: r['Branch Code'],
+        managerName: r['Manager Name'],
+        shgName: r['SHG Name'],
+        members: r['No. of SHG Members'],
+        repName: (r['Representative Name & Phone Number']||'').split(' / ')[0]||'',
+        repPhone: (r['Representative Name & Phone Number']||'').split(' / ')[1]||'',
+        cstName: (r['CST Name & Phone Number']||'').split(' / ')[0]||'',
+        cstPhone: (r['CST Name & Phone Number']||'').split(' / ')[1]||'',
+        village: r['Village Name'],
+        block: r['Block Name'],
+        district: r['District Name'],
+        rating: r['Rating Received with APO/BMM Sign'],
+        appStatus: r['Loan Application Status'],
+        notCompleteReason: r['If Not Complete'],
+        eligibility: r['Loan Eligibility Status'],
+        notEligibleReason: r['If Not Eligible'],
+        sbAcName: r['SHG SB A/C Name'],
+        los: r['LOS Initiated Date'],
+        master: r['Loan Master Created Date'],
+        disbursed: r['Loan Disbursed Date'],
+        loanAcNo: r['LOAN A/c NO'],
+        disbursedMembers: r['Loan Disbursed to Individual Members Date'],
+        loggedAt: r['Logged At']
+      }));
+    } else {
+      records = [];
+      toast('Could not load records from sheet');
+    }
+  }catch(err){
+    records = [];
+    toast('Sync unreachable — check the Apps Script URL');
+  }
+}
+
+async function createRecordRemote(entry){
+  const payload = {
+    token: SYNC_TOKEN,
+    action: 'create',
+    record: {
+      id: entry.id, receivedDateTime: entry.receivedDateTime, branchName: entry.branchName,
+      branchCode: entry.branchCode, managerName: entry.managerName, shgName: entry.shgName,
+      members: entry.members,
+      repCombined: [entry.repName, entry.repPhone].filter(Boolean).join(' / '),
+      cstCombined: [entry.cstName, entry.cstPhone].filter(Boolean).join(' / '),
+      village: entry.village, block: entry.block, district: entry.district,
+      rating: entry.rating, appStatus: entry.appStatus, notCompleteReason: entry.notCompleteReason,
+      eligibility: entry.eligibility, notEligibleReason: entry.notEligibleReason,
+      sbAcName: entry.sbAcName, los: entry.los, master: entry.master,
+      disbursed: entry.disbursed, loanAcNo: entry.loanAcNo || '', disbursedMembers: entry.disbursedMembers, loggedAt: entry.loggedAt
+    }
+  };
+  try{
+    await fetch(SYNC_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
+    return true;
+  }catch(err){ return false; }
+}
+
+async function updateRecordRemote(record){
+  const payload = {
+    token: SYNC_TOKEN, action: 'update', id: record.id,
+    los: record.los, master: record.master, disbursed: record.disbursed,
+    loanAcNo: record.loanAcNo || '', disbursedMembers: record.disbursedMembers
+  };
+  try{
+    await fetch(SYNC_URL, {method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload)});
+    return true;
+  }catch(err){ return false; }
+}
+
+/* ---------------- STAGE 1 SAVE ---------------- */
+function clearStage1(){
+  ["r_shgname","r_members","r_receiveddt","r_village","r_block","r_repname","r_repphone",
+   "r_cstname","r_cstphone","r_sbacname"].forEach(id=>{ document.getElementById(id).value=""; });
+  document.getElementById('r_district').value = "";
+  document.getElementById('r_appstatus').value = "";
+  document.getElementById('r_eligibility').value = "";
+  document.getElementById('r_notcompletereason').value = "";
+  document.getElementById('r_noteligiblereason').value = "";
+  document.getElementById('cond_notcomplete').classList.remove('show');
+  document.getElementById('cond_noteligible').classList.remove('show');
+  resetYN('r_rating');
+}
+
+document.getElementById('btn-save-receiving').addEventListener('click', async ()=>{
+  const shgname = document.getElementById('r_shgname').value.trim();
+  if(!shgname){ toast('SHG name is required'); return; }
+  const entry = {
+    id: 'A' + Date.now().toString(36).toUpperCase(),
+    receivedDateTime: document.getElementById('r_receiveddt').value || new Date().toISOString().slice(0,16),
+    branchName: session.branch,
+    branchCode: session.code,
+    managerName: session.name,
+    shgName: shgname,
+    members: document.getElementById('r_members').value.trim(),
+    repName: document.getElementById('r_repname').value.trim(),
+    repPhone: document.getElementById('r_repphone').value.trim(),
+    cstName: document.getElementById('r_cstname').value.trim(),
+    cstPhone: document.getElementById('r_cstphone').value.trim(),
+    village: document.getElementById('r_village').value.trim(),
+    block: document.getElementById('r_block').value.trim(),
+    district: document.getElementById('r_district').value || session.district,
+    rating: getYN('r_rating'),
+    appStatus: document.getElementById('r_appstatus').value,
+    notCompleteReason: document.getElementById('r_notcompletereason').value,
+    eligibility: document.getElementById('r_eligibility').value,
+    notEligibleReason: document.getElementById('r_noteligiblereason').value,
+    sbAcName: document.getElementById('r_sbacname').value.trim(),
+    los: "", master: "", disbursed: "", loanAcNo: "", disbursedMembers: "",
+    loggedAt: new Date().toISOString().slice(0,16).replace('T',' ')
+  };
+  toast('Saving…');
+  const ok = await createRecordRemote(entry);
+  if(!ok){ toast('Save failed — check connection'); return; }
+  records.push(entry);
+  clearStage1();
+  toast('Application saved · ' + records.length + ' total');
+});
+
+/* ---------------- STAGE 2 SEARCH + SAVE ---------------- */
+document.getElementById('loan-search').addEventListener('input', (e)=>renderLoanSearch(e.target.value));
+
+function renderLoanSearch(query){
+  const box = document.getElementById('loan-searchres');
+  const q = query.trim().toLowerCase();
+  let pool = [...records].reverse();
+  if(q){
+    pool = pool.filter(r =>
+      (r.shgName||'').toLowerCase().includes(q) ||
+      (r.branchName||'').toLowerCase().includes(q) ||
+      (r.village||'').toLowerCase().includes(q)
+    );
+  }
+  pool = pool.slice(0, 12);
+  if(pool.length === 0){
+    box.innerHTML = q ? '<div class="row"><div class="m">No matching applications</div></div>' : '';
+    return;
+  }
+  box.innerHTML = pool.map(r=>{
+    const stage2Done = r.disbursedMembers ? ' · fully disbursed' : (r.los ? ' · loan stage started' : '');
+    return '<div class="row" onclick="selectCase(\''+r.id+'\')"><div class="t">'+(r.shgName||'Unnamed SHG')+'</div><div class="m">'+(r.branchName||'')+' · '+(r.village||'')+stage2Done+'</div></div>';
+  }).join('');
+}
+
+function selectCase(id){
+  selectedCaseId = id;
+  const r = records.find(x=>x.id===id);
+  if(!r) return;
+  document.getElementById('loan-selected').innerHTML =
+    '<div class="selected-case"><div class="t">'+r.shgName+'</div>'+r.branchName+' · '+r.village+' · Received '+r.receivedDateTime+'</div>';
+  document.getElementById('l_los').value = r.los || "";
+  document.getElementById('l_master').value = r.master || "";
+  document.getElementById('l_disbursed').value = r.disbursed || "";
+  document.getElementById('l_loanacno').value = r.loanAcNo || "";
+  document.getElementById('l_disbursedmembers').value = r.disbursedMembers || "";
+  document.getElementById('loan-form').style.display = 'block';
+  document.getElementById('loan-searchres').innerHTML = '';
+  document.getElementById('loan-search').value = '';
+}
+
+function clearStage2(){
+  selectedCaseId = null;
+  document.getElementById('loan-selected').innerHTML = '';
+  document.getElementById('loan-form').style.display = 'none';
+  ["l_los","l_master","l_disbursed","l_loanacno","l_disbursedmembers"].forEach(id=>document.getElementById(id).value="");
+}
+
+document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
+  if(!selectedCaseId){ toast('Search and select an application first'); return; }
+  const r = records.find(x=>x.id===selectedCaseId);
+  if(!r) return;
+  r.los = document.getElementById('l_los').value;
+  r.master = document.getElementById('l_master').value;
+  r.disbursed = document.getElementById('l_disbursed').value;
+  r.loanAcNo = document.getElementById('l_loanacno').value.trim();
+  r.disbursedMembers = document.getElementById('l_disbursedmembers').value;
+  toast('Saving…');
+  const ok = await updateRecordRemote(r);
+  if(!ok){ toast('Save failed — check connection'); return; }
+  toast('Loan progress saved for ' + r.shgName);
+  clearStage2();
+});
+
+/* ---------------- HOME ---------------- */
+function renderHome(){
+  document.getElementById('h_total').textContent = records.length;
+  document.getElementById('h_sanctioned').textContent = records.filter(r=>r.disbursedMembers).length;
+  document.getElementById('h_pending').textContent = records.filter(r=>r.appStatus && r.appStatus !== 'Complete').length;
+  document.getElementById('h_stage2ready').textContent = records.filter(r=>r.eligibility==='Eligible' && r.appStatus==='Complete' && !r.los).length;
+
+  const byDistrict = {};
+  records.forEach(r=>{ const d = r.district || 'Unspecified'; byDistrict[d] = (byDistrict[d]||0)+1; });
+  const pairs = Object.entries(byDistrict).sort((a,b)=>b[1]-a[1]);
+  const bars = document.getElementById('h_bars');
+  if(pairs.length === 0){ bars.innerHTML = '<div class="hint" style="color:var(--muted); font-size:12px">No data yet</div>'; return; }
+  const maxVal = Math.max(...pairs.map(p=>p[1]));
+  bars.outerHTML = '<div class="barlist" id="h_bars">' + pairs.map(([label,val])=>{
+    const pct = Math.round((val/maxVal)*100);
+    return '<div class="barrow"><div class="lbl">'+label+'</div><div class="track"><div class="fill" style="width:'+pct+'%"></div></div><div class="val">'+val+'</div></div>';
+  }).join('') + '</div>';
+}
+
+/* ---------------- ADMIN: DATE HELPERS ---------------- */
+function dateOnly(s){ return s ? String(s).slice(0,10) : ''; }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function startOfWeekStr(){
+  const d = new Date();
+  const day = d.getDay(); // 0 = Sunday
+  d.setDate(d.getDate() - day);
+  return d.toISOString().slice(0,10);
+}
+function startOfMonthStr(){ return todayStr().slice(0,7) + '-01'; }
+function lastNDays(n){
+  const arr = [];
+  for(let i = n-1; i >= 0; i--){
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    arr.push(d.toISOString().slice(0,10));
+  }
+  return arr;
+}
+function lastNWeekStarts(n){
+  const arr = [];
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay()); // this week's Sunday
+  for(let i = n-1; i >= 0; i--){
+    const w = new Date(d);
+    w.setDate(w.getDate() - i*7);
+    arr.push(w.toISOString().slice(0,10));
+  }
+  return arr;
+}
+function renderBarList(containerId, pairs, opts){
+  opts = opts || {};
+  const el = document.getElementById(containerId);
+  if(pairs.length === 0){ el.innerHTML = '<div class="hint" style="color:var(--muted); font-size:12px">No data yet</div>'; return; }
+  const maxVal = Math.max(...pairs.map(p=>p[1]), 1);
+  el.outerHTML = '<div class="barlist" id="'+containerId+'">' + pairs.map(([label,val])=>{
+    const pct = Math.round((val/maxVal)*100);
+    return '<div class="barrow"><div class="lbl">'+label+'</div><div class="track"><div class="fill" style="width:'+pct+'%"></div></div><div class="val">'+val+'</div></div>';
+  }).join('') + '</div>';
+}
+
+/* ---------------- ADMIN: DASHBOARD ---------------- */
+function renderAdminDashboard(){
+  const today = todayStr(), weekStart = startOfWeekStr(), monthStart = startOfMonthStr();
+
+  document.getElementById('ad_today').textContent = records.filter(r=>dateOnly(r.receivedDateTime) === today).length;
+  document.getElementById('ad_week').textContent = records.filter(r=>dateOnly(r.receivedDateTime) >= weekStart).length;
+  document.getElementById('ad_month').textContent = records.filter(r=>dateOnly(r.receivedDateTime) >= monthStart).length;
+  document.getElementById('ad_total').textContent = records.length;
+
+  document.getElementById('ad_sanc_today').textContent = records.filter(r=>dateOnly(r.disbursed) === today).length;
+  document.getElementById('ad_sanc_week').textContent = records.filter(r=>r.disbursed && dateOnly(r.disbursed) >= weekStart).length;
+  document.getElementById('ad_sanc_month').textContent = records.filter(r=>r.disbursed && dateOnly(r.disbursed) >= monthStart).length;
+  document.getElementById('ad_disbursed').textContent = records.filter(r=>r.disbursedMembers).length;
+
+  const days = lastNDays(14);
+  const trendPairs = days.map(d => {
+    const count = records.filter(r => dateOnly(r.receivedDateTime) === d).length;
+    return [d.slice(5), count]; // MM-DD
+  });
+  renderBarList('ad_trend', trendPairs);
+
+  const statusCounts = {};
+  records.forEach(r => { const s = r.appStatus || 'Not set'; statusCounts[s] = (statusCounts[s]||0)+1; });
+  renderBarList('ad_status', Object.entries(statusCounts).sort((a,b)=>b[1]-a[1]));
+
+  const eligCounts = {};
+  records.forEach(r => { const e = r.eligibility || 'Not set'; eligCounts[e] = (eligCounts[e]||0)+1; });
+  renderBarList('ad_eligibility', Object.entries(eligCounts).sort((a,b)=>b[1]-a[1]));
+}
+
+/* ---------------- ADMIN: BRANCH COVERAGE ---------------- */
+function renderBranchCoverage(){
+  const period = document.getElementById('coverage-period').value;
+  let filtered = records;
+  if(period === 'week') filtered = records.filter(r => dateOnly(r.receivedDateTime) >= startOfWeekStr());
+  if(period === 'month') filtered = records.filter(r => dateOnly(r.receivedDateTime) >= startOfMonthStr());
+
+  const allBranches = Object.keys(BRANCH_DIRECTORY);
+  const branchesWithApps = new Set(filtered.map(r => r.branchName).filter(Boolean));
+  const nilBranches = allBranches.filter(b => !branchesWithApps.has(b)).sort();
+
+  document.getElementById('ac_nil_count').textContent = '(' + nilBranches.length + ' of ' + allBranches.length + ' branches)';
+
+  const nilByDistrict = {};
+  nilBranches.forEach(b => {
+    const d = BRANCH_DIRECTORY[b].district;
+    (nilByDistrict[d] = nilByDistrict[d] || []).push(b);
+  });
+  const nilList = document.getElementById('ac_nil_list');
+  if(nilBranches.length === 0){
+    nilList.innerHTML = '<div class="empty" style="padding:16px"><div class="big">✓</div>Every branch has logged at least one application this period.</div>';
+  } else {
+    nilList.innerHTML = Object.entries(nilByDistrict).map(([district, branches]) => (
+      '<div style="margin-bottom:10px"><div style="font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">'+district+' ('+branches.length+')</div>' +
+      '<div style="font-size:13px;line-height:1.7">'+branches.join(', ')+'</div></div>'
+    )).join('');
+  }
+
+  const branchCounts = {};
+  filtered.forEach(r => { if(r.branchName) branchCounts[r.branchName] = (branchCounts[r.branchName]||0)+1; });
+  const top = Object.entries(branchCounts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  renderBarList('ac_leaderboard', top);
+}
+
+/* ---------------- ADMIN: SANCTIONS ANALYSIS ---------------- */
+function renderSanctionsAnalysis(){
+  const disbursedRecords = records.filter(r => r.disbursed);
+
+  const days = lastNDays(14);
+  const dailyPairs = days.map(d => [d.slice(5), disbursedRecords.filter(r=>dateOnly(r.disbursed)===d).length]);
+  renderBarList('as_daily', dailyPairs);
+
+  const weeks = lastNWeekStarts(8);
+  const weeklyPairs = weeks.map((w,i) => {
+    const nextWeek = weeks[i+1] || null;
+    const count = disbursedRecords.filter(r => {
+      const dd = dateOnly(r.disbursed);
+      return dd >= w && (!nextWeek || dd < nextWeek);
+    }).length;
+    return [w.slice(5), count];
+  });
+  renderBarList('as_weekly', weeklyPairs);
+
+  const year = todayStr().slice(0,4);
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthlyPairs = monthNames.map((name, idx) => {
+    const mm = String(idx+1).padStart(2,'0');
+    const prefix = year + '-' + mm;
+    const count = disbursedRecords.filter(r => dateOnly(r.disbursed).startsWith(prefix)).length;
+    return [name, count];
+  }).filter((_, idx) => idx <= new Date().getMonth());
+  renderBarList('as_monthly', monthlyPairs);
+
+  const turnarounds = records
+    .filter(r => r.receivedDateTime && r.disbursed)
+    .map(r => {
+      const received = new Date(dateOnly(r.receivedDateTime));
+      const disbursed = new Date(dateOnly(r.disbursed));
+      return Math.round((disbursed - received) / 86400000);
+    })
+    .filter(n => !isNaN(n) && n >= 0);
+  const avg = turnarounds.length ? Math.round(turnarounds.reduce((a,b)=>a+b,0) / turnarounds.length) : null;
+  document.getElementById('as_turnaround').textContent = avg === null ? '–' : avg;
+}
+
+/* ---------------- RECORDS ---------------- */
+function badge(text, cls){ return text ? '<span class="badge badge-'+cls+'">'+text+'</span>' : '<span class="badge badge-blank">–</span>'; }
+function statusBadge(status){
+  if(status === 'Complete') return badge('Complete','complete');
+  if(status === 'Not Complete') return badge('Not Complete','notcomplete');
+  if(status === 'Not Received') return badge('Not Received','notreceived');
+  return badge('','blank');
+}
+function eligBadge(e){
+  if(e === 'Eligible') return badge('Eligible','eligible');
+  if(e === 'Not Eligible') return badge('Not Eligible','noteligible');
+  return badge('','blank');
+}
+
+function renderRecords(){
+  document.getElementById('rec_total').textContent = records.length;
+  document.getElementById('rec_stage2').textContent = records.filter(r=>r.los).length;
+  const body = document.getElementById('records_body');
+  if(records.length === 0){
+    body.innerHTML = '<div class="empty"><div class="big">☐</div>No applications logged yet.</div>';
+    return;
+  }
+  let html = '<div class="table-wrap"><table><thead><tr>';
+  ['SHG Name','Branch','Village','District','App Status','Eligibility','Disbursed','Logged'].forEach(h=>html += '<th>'+h+'</th>');
+  html += '</tr></thead><tbody>';
+  [...records].reverse().forEach(r=>{
+    html += '<tr>';
+    html += '<td>'+(r.shgName||'–')+'</td>';
+    html += '<td>'+(r.branchName||'–')+'</td>';
+    html += '<td>'+(r.village||'–')+'</td>';
+    html += '<td>'+(r.district||'–')+'</td>';
+    html += '<td>'+statusBadge(r.appStatus)+'</td>';
+    html += '<td>'+eligBadge(r.eligibility)+'</td>';
+    html += '<td>'+(r.disbursedMembers ? badge('Yes','y') : badge('','blank'))+'</td>';
+    html += '<td>'+(r.loggedAt||'–')+'</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
+}
+
+/* ---------------- EXPORT ---------------- */
+const EXPORT_HEADERS = [
+  "Received Date & Time","Branch Name","Branch Code","Manager Name","SHG Name","No. of SHG Members",
+  "Representative Name & Phone Number","CST Name & Phone Number","Village Name","Block Name","District Name",
+  "Rating Received with APO/BMM Sign","Loan Application Status","If Not Complete","Loan Eligibility Status",
+  "If Not Eligible","SHG SB A/C Name","LOS Initiated Date","Loan Master Created Date","Loan Disbursed Date",
+  "LOAN A/c NO","Loan Disbursed to Individual Members Date"
+];
+
+document.getElementById('btn-export-page').addEventListener('click', ()=>{
+  if(records.length === 0){ toast('No records yet'); return; }
+  const rows = records.map(r=>({
+    "Received Date & Time": r.receivedDateTime || "",
+    "Branch Name": r.branchName || "",
+    "Branch Code": r.branchCode || "",
+    "Manager Name": r.managerName || "",
+    "SHG Name": r.shgName || "",
+    "No. of SHG Members": r.members || "",
+    "Representative Name & Phone Number": [r.repName, r.repPhone].filter(Boolean).join(' / '),
+    "CST Name & Phone Number": [r.cstName, r.cstPhone].filter(Boolean).join(' / '),
+    "Village Name": r.village || "",
+    "Block Name": r.block || "",
+    "District Name": r.district || "",
+    "Rating Received with APO/BMM Sign": r.rating || "",
+    "Loan Application Status": r.appStatus || "",
+    "If Not Complete": r.notCompleteReason || "",
+    "Loan Eligibility Status": r.eligibility || "",
+    "If Not Eligible": r.notEligibleReason || "",
+    "SHG SB A/C Name": r.sbAcName || "",
+    "LOS Initiated Date": r.los || "",
+    "Loan Master Created Date": r.master || "",
+    "Loan Disbursed Date": r.disbursed || "",
+    "LOAN A/c NO": r.loanAcNo || "",
+    "Loan Disbursed to Individual Members Date": r.disbursedMembers || ""
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows, {header: EXPORT_HEADERS});
+  ws['!cols'] = EXPORT_HEADERS.map(()=>({wch:18}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "SHG Tracker");
+  XLSX.writeFile(wb, "SHG_Loan_Tracker_" + new Date().toISOString().slice(0,10) + ".xlsx");
+  toast('Exported ' + records.length + ' rows');
+});
+</script>
+</body>
+</html>
