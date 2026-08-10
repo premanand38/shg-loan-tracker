@@ -433,35 +433,40 @@
         <input type="date" id="l_los">
       </div>
 
-      <div class="field">
-        <label>Loan Master Created</label>
-        <div class="yn" data-field="l_master_yn">
-          <button type="button" data-val="Yes">Yes</button>
-          <button type="button" data-val="No">No</button>
+      <div class="conditional" id="step_master">
+        <div class="field">
+          <label>Loan Master Created</label>
+          <div class="yn" data-field="l_master_yn">
+            <button type="button" data-val="Yes">Yes</button>
+            <button type="button" data-val="No">No</button>
+          </div>
+        </div>
+        <div class="field conditional" id="cond_master_date">
+          <label>Loan Master Created Date</label>
+          <input type="date" id="l_master">
         </div>
       </div>
-      <div class="field conditional" id="cond_master_date">
-        <label>Loan Master Created Date</label>
-        <input type="date" id="l_master">
-      </div>
 
-      <div class="field">
-        <label>Loan Disbursed</label>
-        <div class="yn" data-field="l_disbursed_yn">
-          <button type="button" data-val="Yes">Yes</button>
-          <button type="button" data-val="No">No</button>
-        </div>
-      </div>
-      <div class="field conditional" id="cond_disbursed_date">
-        <label>Loan Disbursed Date</label>
-        <input type="date" id="l_disbursed">
-      </div>
-
-      <div class="field">
+      <div class="field conditional" id="step_loanacno">
         <label>Loan A/c No.</label>
         <input type="text" id="l_loanacno" placeholder="Loan account number">
       </div>
-      <div class="field" style="margin-bottom:0">
+
+      <div class="conditional" id="step_disbursed">
+        <div class="field">
+          <label>Loan Disbursed</label>
+          <div class="yn" data-field="l_disbursed_yn">
+            <button type="button" data-val="Yes">Yes</button>
+            <button type="button" data-val="No">No</button>
+          </div>
+        </div>
+        <div class="field conditional" id="cond_disbursed_date">
+          <label>Loan Disbursed Date</label>
+          <input type="date" id="l_disbursed">
+        </div>
+      </div>
+
+      <div class="field conditional" id="step_membersdate" style="margin-bottom:0">
         <label>Loan Disbursed to Individual Members Date</label>
         <input type="date" id="l_disbursedmembers">
       </div>
@@ -692,31 +697,45 @@ document.getElementById('r_eligibility').addEventListener('change', function(){
   document.getElementById('cond_noteligible').classList.toggle('show', this.value === 'Not Eligible');
 });
 
-// LOS / Master / Disbursed: show the date field only when Yes is chosen
-const YN_DATE_MAP = [
-  {field: 'l_los_yn', cond: 'cond_los_date', dateInput: 'l_los'},
-  {field: 'l_master_yn', cond: 'cond_master_date', dateInput: 'l_master'},
-  {field: 'l_disbursed_yn', cond: 'cond_disbursed_date', dateInput: 'l_disbursed'}
-];
-YN_DATE_MAP.forEach(({field, cond, dateInput})=>{
+// Sequential gating: each stage only appears once the prior stage is satisfied.
+// LOS Initiated (Yes) -> Loan Master Created -> Loan A/c No. entered -> Loan Disbursed -> Members Date
+function updateSanctionStages(){
+  const losYN = getYN('l_los_yn');
+  document.getElementById('cond_los_date').classList.toggle('show', losYN === 'Yes');
+
+  const showMaster = losYN === 'Yes';
+  document.getElementById('step_master').classList.toggle('show', showMaster);
+  if(!showMaster){ resetYN('l_master_yn'); document.getElementById('l_master').value = ''; }
+
+  const masterYN = showMaster ? getYN('l_master_yn') : '';
+  document.getElementById('cond_master_date').classList.toggle('show', masterYN === 'Yes');
+
+  const showLoanAcNo = masterYN === 'Yes';
+  document.getElementById('step_loanacno').classList.toggle('show', showLoanAcNo);
+  if(!showLoanAcNo){ document.getElementById('l_loanacno').value = ''; }
+
+  const loanAcNoFilled = showLoanAcNo && document.getElementById('l_loanacno').value.trim() !== '';
+  document.getElementById('step_disbursed').classList.toggle('show', loanAcNoFilled);
+  if(!loanAcNoFilled){ resetYN('l_disbursed_yn'); document.getElementById('l_disbursed').value = ''; }
+
+  const disbursedYN = loanAcNoFilled ? getYN('l_disbursed_yn') : '';
+  document.getElementById('cond_disbursed_date').classList.toggle('show', disbursedYN === 'Yes');
+
+  const showMembersDate = disbursedYN === 'Yes';
+  document.getElementById('step_membersdate').classList.toggle('show', showMembersDate);
+  if(!showMembersDate){ document.getElementById('l_disbursedmembers').value = ''; }
+}
+['l_los_yn','l_master_yn','l_disbursed_yn'].forEach(field=>{
   const group = document.querySelector('.yn[data-field="'+field+'"]');
   group.querySelectorAll('button').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const isYes = btn.dataset.val === 'Yes' && !(btn.classList.contains('sel-yes') && btn.dataset.active !== '1');
-      // small delay to let the generic toggle handler above run first
-      setTimeout(()=>{
-        const active = group.querySelector('button[data-active="1"]');
-        const show = active && active.dataset.val === 'Yes';
-        document.getElementById(cond).classList.toggle('show', show);
-        if(!show) document.getElementById(dateInput).value = '';
-      }, 0);
-    });
+    btn.addEventListener('click', updateSanctionStages);
   });
 });
+document.getElementById('l_loanacno').addEventListener('input', updateSanctionStages);
 
 /* ---------------- STORAGE (Google Sheet via Apps Script) ---------------- */
 // Paste your deployed Apps Script Web App URL here after running Code.gs's setup steps.
-const SYNC_URL = "https://script.google.com/macros/s/AKfycbw3ulEOIftuQ32Jn38ZrWAN1ai2IVWLsTutw6oId_GcLzpBp7vvxmbsLBNG2Zi6-5Vizg/exec";
+const SYNC_URL = "https://script.google.com/macros/s/AKfycbzTtXi6l58gEi1Tb6og4hST43X0yJSdRIFNgF7i8N01QGOkzDjjJEJVB4ouh5tJ9ruFug/exec";
 const SYNC_TOKEN = "IOB-SHG-TRACKER-2026"; // must match TOKEN in Code.gs
 
 function syncConfigured(){ return SYNC_URL && SYNC_URL.indexOf('PASTE_YOUR') === -1; }
@@ -877,6 +896,11 @@ function renderLoanSearch(query){
   const box = document.getElementById('loan-searchres');
   const q = query.trim().toLowerCase();
   let pool = [...records].reverse();
+  // Branch managers only ever see and edit their own branch's applications —
+  // keeps one branch from viewing or overwriting another's sanction data.
+  if(session && session.role === 'branch'){
+    pool = pool.filter(r => r.branchName === session.branch);
+  }
   if(q){
     pool = pool.filter(r =>
       (r.shgName||'').toLowerCase().includes(q) ||
@@ -886,7 +910,7 @@ function renderLoanSearch(query){
   }
   pool = pool.slice(0, 12);
   if(pool.length === 0){
-    box.innerHTML = q ? '<div class="row"><div class="m">No matching applications</div></div>' : '';
+    box.innerHTML = '<div class="row"><div class="m">' + (q ? 'No matching applications' : 'No applications logged yet for your branch') + '</div></div>';
     return;
   }
   box.innerHTML = pool.map(r=>{
@@ -913,18 +937,19 @@ function selectCase(id){
 
   document.getElementById('l_los').value = r.los || "";
   setYN('l_los_yn', r.losYN || (r.los ? 'Yes' : ''));
-  document.getElementById('cond_los_date').classList.toggle('show', !!(r.losYN === 'Yes' || r.los));
 
   document.getElementById('l_master').value = r.master || "";
   setYN('l_master_yn', r.masterYN || (r.master ? 'Yes' : ''));
-  document.getElementById('cond_master_date').classList.toggle('show', !!(r.masterYN === 'Yes' || r.master));
+
+  document.getElementById('l_loanacno').value = r.loanAcNo || "";
 
   document.getElementById('l_disbursed').value = r.disbursed || "";
   setYN('l_disbursed_yn', r.disbursedYN || (r.disbursed ? 'Yes' : ''));
-  document.getElementById('cond_disbursed_date').classList.toggle('show', !!(r.disbursedYN === 'Yes' || r.disbursed));
 
-  document.getElementById('l_loanacno').value = r.loanAcNo || "";
   document.getElementById('l_disbursedmembers').value = r.disbursedMembers || "";
+
+  updateSanctionStages();
+
   document.getElementById('loan-form').style.display = 'block';
   document.getElementById('loan-searchres').innerHTML = '';
   document.getElementById('loan-search').value = '';
@@ -936,9 +961,7 @@ function clearStage2(){
   document.getElementById('loan-form').style.display = 'none';
   ["l_los","l_master","l_disbursed","l_loanacno","l_disbursedmembers"].forEach(id=>document.getElementById(id).value="");
   resetYN('l_los_yn'); resetYN('l_master_yn'); resetYN('l_disbursed_yn');
-  document.getElementById('cond_los_date').classList.remove('show');
-  document.getElementById('cond_master_date').classList.remove('show');
-  document.getElementById('cond_disbursed_date').classList.remove('show');
+  updateSanctionStages();
 }
 
 document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
