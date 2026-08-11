@@ -248,6 +248,10 @@
       <div class="stat"><div class="num" id="ad_sanc_month">0</div><div class="lab">Sanctioned this month</div></div>
       <div class="stat"><div class="num" id="ad_disbursed">0</div><div class="lab">Fully disbursed, all time</div></div>
     </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="ad_amt_applied">₹0</div><div class="lab">Total amount applied</div></div>
+      <div class="stat"><div class="num" id="ad_amt_avg_applied">₹0</div><div class="lab">Avg. amount per application</div></div>
+    </div>
     <div class="card">
       <h3>Applications Received — Last 14 Days</h3>
       <div class="barrow" id="ad_trend"></div>
@@ -286,6 +290,14 @@
   <!-- ADMIN: SANCTIONS -->
   <div class="panel" id="panel-admin-sanctions">
     <div class="stagehead"><div class="num">C</div><div><h2>Sanctions</h2><div class="d">Loan sanction &amp; disbursement activity</div></div></div>
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="as_amt_sanctioned">₹0</div><div class="lab">Total sanctioned amount</div></div>
+      <div class="stat"><div class="num" id="as_amt_avg_sanctioned">₹0</div><div class="lab">Avg. sanctioned amount</div></div>
+    </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="as_amt_pending">₹0</div><div class="lab">Applied but not yet sanctioned</div></div>
+      <div class="stat"><div class="num" id="as_sanction_rate">0%</div><div class="lab">Sanctioned as share of applied ₹</div></div>
+    </div>
     <div class="card">
       <h3>Disbursed — Last 14 Days</h3>
       <div class="barrow" id="as_daily"></div>
@@ -297,6 +309,10 @@
     <div class="card">
       <h3>Disbursed — This Year, by Month</h3>
       <div class="barrow" id="as_monthly"></div>
+    </div>
+    <div class="card">
+      <h3>Sanctioned Amount by District</h3>
+      <div class="barrow" id="as_amt_by_district"></div>
     </div>
     <div class="card">
       <h3>Average Turnaround</h3>
@@ -320,9 +336,13 @@
           <input type="number" id="r_members" placeholder="e.g. 12" min="1" step="1" inputmode="numeric" pattern="[0-9]*">
         </div>
         <div class="field">
-          <label>Received Date &amp; Time</label>
-          <input type="datetime-local" id="r_receiveddt">
+          <label>Loan Amount Applied (₹)</label>
+          <input type="number" id="r_loanamount" placeholder="e.g. 200000" min="0" step="1" inputmode="numeric">
         </div>
+      </div>
+      <div class="field">
+        <label>Received Date &amp; Time</label>
+        <input type="datetime-local" id="r_receiveddt">
       </div>
       <div class="row2">
         <div class="field">
@@ -460,6 +480,10 @@
         <div class="field conditional" id="cond_master_date">
           <label>Loan Master Created Date</label>
           <input type="date" id="l_master">
+        </div>
+        <div class="field conditional" id="cond_sanctioned_amount" style="margin-bottom:0">
+          <label>Sanctioned Amount (₹)</label>
+          <input type="number" id="l_sanctionedamount" placeholder="e.g. 200000" min="0" step="1" inputmode="numeric">
         </div>
       </div>
 
@@ -733,10 +757,16 @@ function updateSanctionStages(){
 
   const showMaster = losYN === 'Yes';
   document.getElementById('step_master').classList.toggle('show', showMaster);
-  if(!showMaster){ resetYN('l_master_yn'); document.getElementById('l_master').value = ''; }
+  if(!showMaster){
+    resetYN('l_master_yn');
+    document.getElementById('l_master').value = '';
+    document.getElementById('l_sanctionedamount').value = '';
+  }
 
   const masterYN = showMaster ? getYN('l_master_yn') : '';
   document.getElementById('cond_master_date').classList.toggle('show', masterYN === 'Yes');
+  document.getElementById('cond_sanctioned_amount').classList.toggle('show', masterYN === 'Yes');
+  if(masterYN !== 'Yes'){ document.getElementById('l_sanctionedamount').value = ''; }
 
   const showLoanAcNo = masterYN === 'Yes';
   document.getElementById('step_loanacno').classList.toggle('show', showLoanAcNo);
@@ -782,6 +812,7 @@ async function loadRecords(){
         managerName: r['Manager Name'],
         shgName: r['SHG Name'],
         members: r['No. of SHG Members'],
+        loanAmount: r['Loan Amount Applied (₹)'] || '',
         repName: r['Representative Name'] || '',
         repPhone: r['Representative Phone'] || '',
         cstName: r['CST Name'] || '',
@@ -800,6 +831,7 @@ async function loadRecords(){
         los: r['LOS Initiated Date'],
         masterYN: r['Loan Master Created (Y/N)'],
         master: r['Loan Master Created Date'],
+        sanctionedAmount: r['Sanctioned Amount (₹)'] || '',
         disbursedYN: r['Loan Disbursed (Y/N)'],
         disbursed: r['Loan Disbursed Date'],
         loanAcNo: r['LOAN A/c NO'],
@@ -827,7 +859,7 @@ async function createRecordRemote(entry){
     record: {
       id: entry.id, receivedDateTime: entry.receivedDateTime, branchName: entry.branchName,
       branchCode: entry.branchCode, managerName: entry.managerName, shgName: entry.shgName,
-      members: entry.members,
+      members: entry.members, loanAmount: entry.loanAmount || '',
       repName: entry.repName || '', repPhone: entry.repPhone || '',
       cstName: entry.cstName || '', cstPhone: entry.cstPhone || '',
       village: entry.village, block: entry.block, district: entry.district,
@@ -835,6 +867,7 @@ async function createRecordRemote(entry){
       eligibility: entry.eligibility, notEligibleReason: entry.notEligibleReason,
       sbAcName: entry.sbAcName, allAcOpened: entry.allAcOpened || '',
       losYN: entry.losYN || '', los: entry.los, masterYN: entry.masterYN || '', master: entry.master,
+      sanctionedAmount: entry.sanctionedAmount || '',
       disbursedYN: entry.disbursedYN || '', disbursed: entry.disbursed,
       loanAcNo: entry.loanAcNo || '', disbursedMembers: entry.disbursedMembers, loggedAt: entry.loggedAt
     }
@@ -850,6 +883,7 @@ async function updateRecordRemote(record){
     token: SYNC_TOKEN, action: 'update', id: record.id,
     losYN: record.losYN || '', los: record.los,
     masterYN: record.masterYN || '', master: record.master,
+    sanctionedAmount: record.sanctionedAmount || '',
     disbursedYN: record.disbursedYN || '', disbursed: record.disbursed,
     loanAcNo: record.loanAcNo || '', disbursedMembers: record.disbursedMembers
   };
@@ -876,7 +910,7 @@ async function deleteRecordRemote(id){
 
 /* ---------------- STAGE 1 SAVE ---------------- */
 function clearStage1(){
-  ["r_shgname","r_members","r_receiveddt","r_repname","r_repphone",
+  ["r_shgname","r_members","r_loanamount","r_receiveddt","r_repname","r_repphone",
    "r_cstname","r_cstphone","r_sbacname"].forEach(id=>{ document.getElementById(id).value=""; });
   document.getElementById('r_appstatus').value = "";
   document.getElementById('r_eligibility').value = "";
@@ -906,6 +940,9 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
   const sbAcNumber = document.getElementById('r_sbacname').value.trim();
   if(sbAcNumber && !/^[0-9]{15}$/.test(sbAcNumber)){ toast('SHG SB Account Number must be exactly 15 digits'); return; }
 
+  const loanAmount = document.getElementById('r_loanamount').value.trim();
+  if(loanAmount && (!/^[0-9]+$/.test(loanAmount) || Number(loanAmount) <= 0)){ toast('Loan Amount Applied must be a positive whole number'); return; }
+
   const entry = {
     id: 'A' + Date.now().toString(36).toUpperCase(),
     receivedDateTime: document.getElementById('r_receiveddt').value || new Date().toISOString().slice(0,16),
@@ -914,6 +951,7 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
     managerName: session.name,
     shgName: shgname,
     members: members,
+    loanAmount: loanAmount,
     repName: document.getElementById('r_repname').value.trim(),
     repPhone: repPhone,
     cstName: document.getElementById('r_cstname').value.trim(),
@@ -928,7 +966,7 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
     notEligibleReason: document.getElementById('r_noteligiblereason').value,
     sbAcName: sbAcNumber,
     allAcOpened: getYN('r_allacopened'),
-    losYN: "", los: "", masterYN: "", master: "", disbursedYN: "", disbursed: "",
+    losYN: "", los: "", masterYN: "", master: "", sanctionedAmount: "", disbursedYN: "", disbursed: "",
     loanAcNo: "", disbursedMembers: "",
     loggedAt: new Date().toISOString().slice(0,16).replace('T',' ')
   };
@@ -991,6 +1029,7 @@ function selectCase(id){
 
   document.getElementById('l_master').value = r.master || "";
   setYN('l_master_yn', r.masterYN || (r.master ? 'Yes' : ''));
+  document.getElementById('l_sanctionedamount').value = r.sanctionedAmount || "";
 
   document.getElementById('l_loanacno').value = r.loanAcNo || "";
 
@@ -1010,7 +1049,7 @@ function clearStage2(){
   selectedCaseId = null;
   document.getElementById('loan-selected').innerHTML = '';
   document.getElementById('loan-form').style.display = 'none';
-  ["l_los","l_master","l_disbursed","l_loanacno","l_disbursedmembers"].forEach(id=>document.getElementById(id).value="");
+  ["l_los","l_master","l_sanctionedamount","l_disbursed","l_loanacno","l_disbursedmembers"].forEach(id=>document.getElementById(id).value="");
   resetYN('l_los_yn'); resetYN('l_master_yn'); resetYN('l_disbursed_yn');
   updateSanctionStages();
 }
@@ -1023,10 +1062,14 @@ document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
   const loanAcNo = document.getElementById('l_loanacno').value.trim();
   if(loanAcNo && !/^[0-9]{15}$/.test(loanAcNo)){ toast('Loan A/c No. must be exactly 15 digits'); return; }
 
+  const sanctionedAmount = document.getElementById('l_sanctionedamount').value.trim();
+  if(sanctionedAmount && (!/^[0-9]+$/.test(sanctionedAmount) || Number(sanctionedAmount) <= 0)){ toast('Sanctioned Amount must be a positive whole number'); return; }
+
   r.losYN = getYN('l_los_yn');
   r.los = r.losYN === 'Yes' ? document.getElementById('l_los').value : '';
   r.masterYN = getYN('l_master_yn');
   r.master = r.masterYN === 'Yes' ? document.getElementById('l_master').value : '';
+  r.sanctionedAmount = r.masterYN === 'Yes' ? sanctionedAmount : '';
   r.disbursedYN = getYN('l_disbursed_yn');
   r.disbursed = r.disbursedYN === 'Yes' ? document.getElementById('l_disbursed').value : '';
   r.loanAcNo = loanAcNo;
@@ -1107,6 +1150,10 @@ function renderBarList(containerId, pairs, opts){
 }
 
 /* ---------------- ADMIN: DASHBOARD ---------------- */
+function formatINR(n){
+  return '₹' + Math.round(n||0).toLocaleString('en-IN');
+}
+
 function renderAdminDashboard(){
   const today = todayStr(), weekStart = startOfWeekStr(), monthStart = startOfMonthStr();
 
@@ -1119,6 +1166,11 @@ function renderAdminDashboard(){
   document.getElementById('ad_sanc_week').textContent = records.filter(r=>r.disbursed && dateOnly(r.disbursed) >= weekStart).length;
   document.getElementById('ad_sanc_month').textContent = records.filter(r=>r.disbursed && dateOnly(r.disbursed) >= monthStart).length;
   document.getElementById('ad_disbursed').textContent = records.filter(r=>r.disbursedMembers).length;
+
+  const appliedAmounts = records.map(r => Number(r.loanAmount)||0).filter(n => n > 0);
+  const totalApplied = appliedAmounts.reduce((a,b)=>a+b, 0);
+  document.getElementById('ad_amt_applied').textContent = formatINR(totalApplied);
+  document.getElementById('ad_amt_avg_applied').textContent = formatINR(appliedAmounts.length ? totalApplied/appliedAmounts.length : 0);
 
   const days = lastNDays(14);
   const trendPairs = days.map(d => {
@@ -1174,6 +1226,16 @@ function renderBranchCoverage(){
 function renderSanctionsAnalysis(){
   const disbursedRecords = records.filter(r => r.disbursed);
 
+  const sanctionedAmounts = records.map(r => Number(r.sanctionedAmount)||0).filter(n => n > 0);
+  const totalSanctioned = sanctionedAmounts.reduce((a,b)=>a+b, 0);
+  document.getElementById('as_amt_sanctioned').textContent = formatINR(totalSanctioned);
+  document.getElementById('as_amt_avg_sanctioned').textContent = formatINR(sanctionedAmounts.length ? totalSanctioned/sanctionedAmounts.length : 0);
+
+  const totalApplied = records.map(r => Number(r.loanAmount)||0).reduce((a,b)=>a+b, 0);
+  const pendingAmount = Math.max(totalApplied - totalSanctioned, 0);
+  document.getElementById('as_amt_pending').textContent = formatINR(pendingAmount);
+  document.getElementById('as_sanction_rate').textContent = totalApplied > 0 ? Math.round((totalSanctioned/totalApplied)*100) + '%' : '0%';
+
   const days = lastNDays(14);
   const dailyPairs = days.map(d => [d.slice(5), disbursedRecords.filter(r=>dateOnly(r.disbursed)===d).length]);
   renderBarList('as_daily', dailyPairs);
@@ -1198,6 +1260,17 @@ function renderSanctionsAnalysis(){
     return [name, count];
   }).filter((_, idx) => idx <= new Date().getMonth());
   renderBarList('as_monthly', monthlyPairs);
+
+  const byDistrictAmt = {};
+  records.forEach(r => {
+    const amt = Number(r.sanctionedAmount) || 0;
+    if(amt > 0){
+      const d = r.district || 'Unspecified';
+      byDistrictAmt[d] = (byDistrictAmt[d] || 0) + amt;
+    }
+  });
+  const districtAmtPairs = Object.entries(byDistrictAmt).sort((a,b)=>b[1]-a[1]).map(([d,amt]) => [d, Math.round(amt)]);
+  renderBarList('as_amt_by_district', districtAmtPairs);
 
   const turnarounds = records
     .filter(r => r.receivedDateTime && r.disbursed)
@@ -1275,10 +1348,12 @@ async function handleDeleteRecord(id, label){
 /* ---------------- EXPORT ---------------- */
 const EXPORT_HEADERS = [
   "Received Date & Time","Branch Name","Branch Code","Manager Name","SHG Name","No. of SHG Members",
+  "Loan Amount Applied (₹)",
   "Representative Name","Representative Phone","CST Name","CST Phone","Village Name","Block Name","District Name",
   "Rating Received with APO/BMM Sign","Loan Application Status","If Not Complete","Loan Eligibility Status",
   "If Not Eligible","SHG SB Account Number","Account Opened for All Members (Y/N)",
   "LOS Initiated (Y/N)","LOS Initiated Date","Loan Master Created (Y/N)","Loan Master Created Date",
+  "Sanctioned Amount (₹)",
   "Loan Disbursed (Y/N)","Loan Disbursed Date","LOAN A/c NO","Loan Disbursed to Individual Members Date"
 ];
 
@@ -1294,6 +1369,7 @@ document.getElementById('btn-export-page').addEventListener('click', ()=>{
     "Manager Name": r.managerName || "",
     "SHG Name": r.shgName || "",
     "No. of SHG Members": r.members || "",
+    "Loan Amount Applied (₹)": r.loanAmount || "",
     "Representative Name": r.repName || "",
     "Representative Phone": r.repPhone || "",
     "CST Name": r.cstName || "",
@@ -1312,6 +1388,7 @@ document.getElementById('btn-export-page').addEventListener('click', ()=>{
     "LOS Initiated Date": r.los || "",
     "Loan Master Created (Y/N)": r.masterYN || "",
     "Loan Master Created Date": r.master || "",
+    "Sanctioned Amount (₹)": r.sanctionedAmount || "",
     "Loan Disbursed (Y/N)": r.disbursedYN || "",
     "Loan Disbursed Date": r.disbursed || "",
     "LOAN A/c NO": r.loanAcNo || "",
