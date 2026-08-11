@@ -298,6 +298,10 @@
       <div class="stat"><div class="num" id="as_amt_pending">₹0</div><div class="lab">Applied but not yet sanctioned</div></div>
       <div class="stat"><div class="num" id="as_sanction_rate">0%</div><div class="lab">Sanctioned as share of applied ₹</div></div>
     </div>
+    <div class="stat-grid">
+      <div class="stat"><div class="num" id="as_amt_disbursed">₹0</div><div class="lab">Total amount disbursed</div></div>
+      <div class="stat"><div class="num" id="as_amt_avg_disbursed">₹0</div><div class="lab">Avg. disbursed per SHG</div></div>
+    </div>
     <div class="card">
       <h3>Disbursed — Last 14 Days</h3>
       <div class="barrow" id="as_daily"></div>
@@ -421,6 +425,10 @@
           <option>Not Eligible</option>
         </select>
       </div>
+      <div class="field conditional" id="cond_loanamounteligible">
+        <label>Loan Amount Eligible (₹)</label>
+        <input type="number" id="r_loanamounteligible" placeholder="e.g. 200000" min="0" step="1" inputmode="numeric">
+      </div>
       <div class="field conditional" id="cond_noteligible">
         <label>If Not Eligible</label>
         <select id="r_noteligiblereason">
@@ -503,6 +511,10 @@
         <div class="field conditional" id="cond_disbursed_date">
           <label>Loan Disbursed Date</label>
           <input type="date" id="l_disbursed">
+        </div>
+        <div class="field conditional" id="cond_amountdisbursed" style="margin-bottom:0">
+          <label>Loan Amount Disbursed (₹)</label>
+          <input type="number" id="l_amountdisbursed" placeholder="e.g. 200000" min="0" step="1" inputmode="numeric">
         </div>
       </div>
 
@@ -741,12 +753,16 @@ document.getElementById('r_appstatus').addEventListener('change', function(){
     eligSel.value = 'Not Eligible';
     eligSel.disabled = true;
     document.getElementById('cond_noteligible').classList.add('show');
+    document.getElementById('cond_loanamounteligible').classList.remove('show');
+    document.getElementById('r_loanamounteligible').value = '';
   } else {
     eligSel.disabled = false;
   }
 });
 document.getElementById('r_eligibility').addEventListener('change', function(){
   document.getElementById('cond_noteligible').classList.toggle('show', this.value === 'Not Eligible');
+  document.getElementById('cond_loanamounteligible').classList.toggle('show', this.value === 'Eligible');
+  if(this.value !== 'Eligible'){ document.getElementById('r_loanamounteligible').value = ''; }
 });
 
 // Sequential gating: each stage only appears once the prior stage is satisfied.
@@ -774,10 +790,16 @@ function updateSanctionStages(){
 
   const loanAcNoFilled = showLoanAcNo && document.getElementById('l_loanacno').value.trim() !== '';
   document.getElementById('step_disbursed').classList.toggle('show', loanAcNoFilled);
-  if(!loanAcNoFilled){ resetYN('l_disbursed_yn'); document.getElementById('l_disbursed').value = ''; }
+  if(!loanAcNoFilled){
+    resetYN('l_disbursed_yn');
+    document.getElementById('l_disbursed').value = '';
+    document.getElementById('l_amountdisbursed').value = '';
+  }
 
   const disbursedYN = loanAcNoFilled ? getYN('l_disbursed_yn') : '';
   document.getElementById('cond_disbursed_date').classList.toggle('show', disbursedYN === 'Yes');
+  document.getElementById('cond_amountdisbursed').classList.toggle('show', disbursedYN === 'Yes');
+  if(disbursedYN !== 'Yes'){ document.getElementById('l_amountdisbursed').value = ''; }
 
   const showMembersDate = disbursedYN === 'Yes';
   document.getElementById('step_membersdate').classList.toggle('show', showMembersDate);
@@ -824,6 +846,7 @@ async function loadRecords(){
         appStatus: r['Loan Application Status'],
         notCompleteReason: r['If Not Complete'],
         eligibility: r['Loan Eligibility Status'],
+        loanAmountEligible: r['Loan Amount Eligible (₹)'] || '',
         notEligibleReason: r['If Not Eligible'],
         sbAcName: r['SHG SB Account Number'],
         allAcOpened: r['Account Opened for All Members (Y/N)'],
@@ -834,6 +857,7 @@ async function loadRecords(){
         sanctionedAmount: r['Sanctioned Amount (₹)'] || '',
         disbursedYN: r['Loan Disbursed (Y/N)'],
         disbursed: r['Loan Disbursed Date'],
+        amountDisbursed: r['Loan Amount Disbursed (₹)'] || '',
         loanAcNo: r['LOAN A/c NO'],
         disbursedMembers: r['Loan Disbursed to Individual Members Date'],
         loggedAt: r['Logged At']
@@ -864,11 +888,13 @@ async function createRecordRemote(entry){
       cstName: entry.cstName || '', cstPhone: entry.cstPhone || '',
       village: entry.village, block: entry.block, district: entry.district,
       rating: entry.rating, appStatus: entry.appStatus, notCompleteReason: entry.notCompleteReason,
-      eligibility: entry.eligibility, notEligibleReason: entry.notEligibleReason,
+      eligibility: entry.eligibility, loanAmountEligible: entry.loanAmountEligible || '',
+      notEligibleReason: entry.notEligibleReason,
       sbAcName: entry.sbAcName, allAcOpened: entry.allAcOpened || '',
       losYN: entry.losYN || '', los: entry.los, masterYN: entry.masterYN || '', master: entry.master,
       sanctionedAmount: entry.sanctionedAmount || '',
       disbursedYN: entry.disbursedYN || '', disbursed: entry.disbursed,
+      amountDisbursed: entry.amountDisbursed || '',
       loanAcNo: entry.loanAcNo || '', disbursedMembers: entry.disbursedMembers, loggedAt: entry.loggedAt
     }
   };
@@ -885,6 +911,7 @@ async function updateRecordRemote(record){
     masterYN: record.masterYN || '', master: record.master,
     sanctionedAmount: record.sanctionedAmount || '',
     disbursedYN: record.disbursedYN || '', disbursed: record.disbursed,
+    amountDisbursed: record.amountDisbursed || '',
     loanAcNo: record.loanAcNo || '', disbursedMembers: record.disbursedMembers
   };
   try{
@@ -910,7 +937,7 @@ async function deleteRecordRemote(id){
 
 /* ---------------- STAGE 1 SAVE ---------------- */
 function clearStage1(){
-  ["r_shgname","r_members","r_loanamount","r_receiveddt","r_repname","r_repphone",
+  ["r_shgname","r_members","r_loanamount","r_loanamounteligible","r_receiveddt","r_repname","r_repphone",
    "r_cstname","r_cstphone","r_sbacname"].forEach(id=>{ document.getElementById(id).value=""; });
   document.getElementById('r_appstatus').value = "";
   document.getElementById('r_eligibility').value = "";
@@ -919,6 +946,7 @@ function clearStage1(){
   document.getElementById('r_noteligiblereason').value = "";
   document.getElementById('cond_notcomplete').classList.remove('show');
   document.getElementById('cond_noteligible').classList.remove('show');
+  document.getElementById('cond_loanamounteligible').classList.remove('show');
   setLocationFromSession();
   resetYN('r_rating');
   resetYN('r_allacopened');
@@ -943,6 +971,9 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
   const loanAmount = document.getElementById('r_loanamount').value.trim();
   if(loanAmount && (!/^[0-9]+$/.test(loanAmount) || Number(loanAmount) <= 0)){ toast('Loan Amount Applied must be a positive whole number'); return; }
 
+  const loanAmountEligible = document.getElementById('r_loanamounteligible').value.trim();
+  if(loanAmountEligible && (!/^[0-9]+$/.test(loanAmountEligible) || Number(loanAmountEligible) <= 0)){ toast('Loan Amount Eligible must be a positive whole number'); return; }
+
   const entry = {
     id: 'A' + Date.now().toString(36).toUpperCase(),
     receivedDateTime: document.getElementById('r_receiveddt').value || new Date().toISOString().slice(0,16),
@@ -963,6 +994,7 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
     appStatus: document.getElementById('r_appstatus').value,
     notCompleteReason: document.getElementById('r_notcompletereason').value,
     eligibility: document.getElementById('r_eligibility').value,
+    loanAmountEligible: document.getElementById('r_eligibility').value === 'Eligible' ? loanAmountEligible : '',
     notEligibleReason: document.getElementById('r_noteligiblereason').value,
     sbAcName: sbAcNumber,
     allAcOpened: getYN('r_allacopened'),
@@ -1035,6 +1067,7 @@ function selectCase(id){
 
   document.getElementById('l_disbursed').value = r.disbursed || "";
   setYN('l_disbursed_yn', r.disbursedYN || (r.disbursed ? 'Yes' : ''));
+  document.getElementById('l_amountdisbursed').value = r.amountDisbursed || "";
 
   document.getElementById('l_disbursedmembers').value = r.disbursedMembers || "";
 
@@ -1049,7 +1082,7 @@ function clearStage2(){
   selectedCaseId = null;
   document.getElementById('loan-selected').innerHTML = '';
   document.getElementById('loan-form').style.display = 'none';
-  ["l_los","l_master","l_sanctionedamount","l_disbursed","l_loanacno","l_disbursedmembers"].forEach(id=>document.getElementById(id).value="");
+  ["l_los","l_master","l_sanctionedamount","l_disbursed","l_amountdisbursed","l_loanacno","l_disbursedmembers"].forEach(id=>document.getElementById(id).value="");
   resetYN('l_los_yn'); resetYN('l_master_yn'); resetYN('l_disbursed_yn');
   updateSanctionStages();
 }
@@ -1065,6 +1098,9 @@ document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
   const sanctionedAmount = document.getElementById('l_sanctionedamount').value.trim();
   if(sanctionedAmount && (!/^[0-9]+$/.test(sanctionedAmount) || Number(sanctionedAmount) <= 0)){ toast('Sanctioned Amount must be a positive whole number'); return; }
 
+  const amountDisbursed = document.getElementById('l_amountdisbursed').value.trim();
+  if(amountDisbursed && (!/^[0-9]+$/.test(amountDisbursed) || Number(amountDisbursed) <= 0)){ toast('Loan Amount Disbursed must be a positive whole number'); return; }
+
   r.losYN = getYN('l_los_yn');
   r.los = r.losYN === 'Yes' ? document.getElementById('l_los').value : '';
   r.masterYN = getYN('l_master_yn');
@@ -1072,6 +1108,7 @@ document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
   r.sanctionedAmount = r.masterYN === 'Yes' ? sanctionedAmount : '';
   r.disbursedYN = getYN('l_disbursed_yn');
   r.disbursed = r.disbursedYN === 'Yes' ? document.getElementById('l_disbursed').value : '';
+  r.amountDisbursed = r.disbursedYN === 'Yes' ? amountDisbursed : '';
   r.loanAcNo = loanAcNo;
   r.disbursedMembers = document.getElementById('l_disbursedmembers').value;
   toast('Saving…');
@@ -1236,6 +1273,11 @@ function renderSanctionsAnalysis(){
   document.getElementById('as_amt_pending').textContent = formatINR(pendingAmount);
   document.getElementById('as_sanction_rate').textContent = totalApplied > 0 ? Math.round((totalSanctioned/totalApplied)*100) + '%' : '0%';
 
+  const disbursedAmounts = records.map(r => Number(r.amountDisbursed)||0).filter(n => n > 0);
+  const totalDisbursedAmt = disbursedAmounts.reduce((a,b)=>a+b, 0);
+  document.getElementById('as_amt_disbursed').textContent = formatINR(totalDisbursedAmt);
+  document.getElementById('as_amt_avg_disbursed').textContent = formatINR(disbursedAmounts.length ? totalDisbursedAmt/disbursedAmounts.length : 0);
+
   const days = lastNDays(14);
   const dailyPairs = days.map(d => [d.slice(5), disbursedRecords.filter(r=>dateOnly(r.disbursed)===d).length]);
   renderBarList('as_daily', dailyPairs);
@@ -1351,10 +1393,11 @@ const EXPORT_HEADERS = [
   "Loan Amount Applied (₹)",
   "Representative Name","Representative Phone","CST Name","CST Phone","Village Name","Block Name","District Name",
   "Rating Received with APO/BMM Sign","Loan Application Status","If Not Complete","Loan Eligibility Status",
+  "Loan Amount Eligible (₹)",
   "If Not Eligible","SHG SB Account Number","Account Opened for All Members (Y/N)",
   "LOS Initiated (Y/N)","LOS Initiated Date","Loan Master Created (Y/N)","Loan Master Created Date",
   "Sanctioned Amount (₹)",
-  "Loan Disbursed (Y/N)","Loan Disbursed Date","LOAN A/c NO","Loan Disbursed to Individual Members Date"
+  "Loan Disbursed (Y/N)","Loan Disbursed Date","Loan Amount Disbursed (₹)","LOAN A/c NO","Loan Disbursed to Individual Members Date"
 ];
 
 document.getElementById('btn-export-page').addEventListener('click', ()=>{
@@ -1381,6 +1424,7 @@ document.getElementById('btn-export-page').addEventListener('click', ()=>{
     "Loan Application Status": r.appStatus || "",
     "If Not Complete": r.notCompleteReason || "",
     "Loan Eligibility Status": r.eligibility || "",
+    "Loan Amount Eligible (₹)": r.loanAmountEligible || "",
     "If Not Eligible": r.notEligibleReason || "",
     "SHG SB Account Number": r.sbAcName || "",
     "Account Opened for All Members (Y/N)": r.allAcOpened || "",
@@ -1391,6 +1435,7 @@ document.getElementById('btn-export-page').addEventListener('click', ()=>{
     "Sanctioned Amount (₹)": r.sanctionedAmount || "",
     "Loan Disbursed (Y/N)": r.disbursedYN || "",
     "Loan Disbursed Date": r.disbursed || "",
+    "Loan Amount Disbursed (₹)": r.amountDisbursed || "",
     "LOAN A/c NO": r.loanAcNo || "",
     "Loan Disbursed to Individual Members Date": r.disbursedMembers || ""
   }));
