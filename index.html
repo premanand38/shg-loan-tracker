@@ -954,25 +954,58 @@ function clearStage1(){
 
 document.getElementById('btn-save-receiving').addEventListener('click', async ()=>{
   const shgname = document.getElementById('r_shgname').value.trim();
-  if(!shgname){ toast('SHG name is required'); return; }
+  if(!shgname){ toast('SHG Name is required'); return; }
 
   const members = document.getElementById('r_members').value.trim();
-  if(members && !/^[0-9]+$/.test(members)){ toast('No. of SHG Members must be a whole number'); return; }
-
-  const repPhone = document.getElementById('r_repphone').value.trim();
-  if(repPhone && !/^[0-9]{10}$/.test(repPhone)){ toast('Representative Phone must be exactly 10 digits'); return; }
-
-  const cstPhone = document.getElementById('r_cstphone').value.trim();
-  if(cstPhone && !/^[0-9]{10}$/.test(cstPhone)){ toast('CST Phone must be exactly 10 digits'); return; }
-
-  const sbAcNumber = document.getElementById('r_sbacname').value.trim();
-  if(sbAcNumber && !/^[0-9]{15}$/.test(sbAcNumber)){ toast('SHG SB Account Number must be exactly 15 digits'); return; }
+  if(!members){ toast('No. of SHG Members is required'); return; }
+  if(!/^[0-9]+$/.test(members)){ toast('No. of SHG Members must be a whole number'); return; }
 
   const loanAmount = document.getElementById('r_loanamount').value.trim();
-  if(loanAmount && (!/^[0-9]+$/.test(loanAmount) || Number(loanAmount) <= 0)){ toast('Loan Amount Applied must be a positive whole number'); return; }
+  if(!loanAmount){ toast('Loan Amount Applied is required'); return; }
+  if(!/^[0-9]+$/.test(loanAmount) || Number(loanAmount) <= 0){ toast('Loan Amount Applied must be a positive whole number'); return; }
+
+  const village = document.getElementById('r_village').value.trim();
+  if(!village){ toast('Village / Panchayat is required'); return; }
+
+  const repName = document.getElementById('r_repname').value.trim();
+  if(!repName){ toast('Representative Name is required'); return; }
+
+  const repPhone = document.getElementById('r_repphone').value.trim();
+  if(!repPhone){ toast('Representative Phone is required'); return; }
+  if(!/^[0-9]{10}$/.test(repPhone)){ toast('Representative Phone must be exactly 10 digits'); return; }
+
+  const cstName = document.getElementById('r_cstname').value.trim();
+  if(!cstName){ toast('CST Name is required'); return; }
+
+  const cstPhone = document.getElementById('r_cstphone').value.trim();
+  if(!cstPhone){ toast('CST Phone is required'); return; }
+  if(!/^[0-9]{10}$/.test(cstPhone)){ toast('CST Phone must be exactly 10 digits'); return; }
+
+  if(!getYN('r_rating')){ toast('Rating Received with APO/BMM Sign is required'); return; }
+
+  const appStatus = document.getElementById('r_appstatus').value;
+  if(!appStatus){ toast('Loan Application Status is required'); return; }
+
+  const notCompleteReason = document.getElementById('r_notcompletereason').value;
+  if(appStatus === 'Not Complete' && !notCompleteReason){ toast('Select a reason for the incomplete application'); return; }
+
+  const eligibility = document.getElementById('r_eligibility').value;
+  if(!eligibility){ toast('Loan Eligibility Status is required'); return; }
 
   const loanAmountEligible = document.getElementById('r_loanamounteligible').value.trim();
-  if(loanAmountEligible && (!/^[0-9]+$/.test(loanAmountEligible) || Number(loanAmountEligible) <= 0)){ toast('Loan Amount Eligible must be a positive whole number'); return; }
+  if(eligibility === 'Eligible'){
+    if(!loanAmountEligible){ toast('Loan Amount Eligible is required'); return; }
+    if(!/^[0-9]+$/.test(loanAmountEligible) || Number(loanAmountEligible) <= 0){ toast('Loan Amount Eligible must be a positive whole number'); return; }
+  }
+
+  const notEligibleReason = document.getElementById('r_noteligiblereason').value;
+  if(eligibility === 'Not Eligible' && !notEligibleReason){ toast('Select a reason for non-eligibility'); return; }
+
+  const sbAcNumber = document.getElementById('r_sbacname').value.trim();
+  if(!sbAcNumber){ toast('SHG SB Account Number is required'); return; }
+  if(!/^[0-9]{15}$/.test(sbAcNumber)){ toast('SHG SB Account Number must be exactly 15 digits'); return; }
+
+  if(!getYN('r_allacopened')){ toast('Account Opened for All SHG Members is required'); return; }
 
   const entry = {
     id: 'A' + Date.now().toString(36).toUpperCase(),
@@ -983,19 +1016,19 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
     shgName: shgname,
     members: members,
     loanAmount: loanAmount,
-    repName: document.getElementById('r_repname').value.trim(),
+    repName: repName,
     repPhone: repPhone,
-    cstName: document.getElementById('r_cstname').value.trim(),
+    cstName: cstName,
     cstPhone: cstPhone,
-    village: document.getElementById('r_village').value.trim(),
+    village: village,
     block: document.getElementById('r_block').value.trim(),
     district: document.getElementById('r_district').value || session.district,
     rating: getYN('r_rating'),
-    appStatus: document.getElementById('r_appstatus').value,
-    notCompleteReason: document.getElementById('r_notcompletereason').value,
-    eligibility: document.getElementById('r_eligibility').value,
-    loanAmountEligible: document.getElementById('r_eligibility').value === 'Eligible' ? loanAmountEligible : '',
-    notEligibleReason: document.getElementById('r_noteligiblereason').value,
+    appStatus: appStatus,
+    notCompleteReason: notCompleteReason,
+    eligibility: eligibility,
+    loanAmountEligible: eligibility === 'Eligible' ? loanAmountEligible : '',
+    notEligibleReason: notEligibleReason,
     sbAcName: sbAcNumber,
     allAcOpened: getYN('r_allacopened'),
     losYN: "", los: "", masterYN: "", master: "", sanctionedAmount: "", disbursedYN: "", disbursed: "",
@@ -1092,25 +1125,60 @@ document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
   const r = records.find(x=>x.id===selectedCaseId);
   if(!r) return;
 
-  const loanAcNo = document.getElementById('l_loanacno').value.trim();
-  if(loanAcNo && !/^[0-9]{15}$/.test(loanAcNo)){ toast('Loan A/c No. must be exactly 15 digits'); return; }
+  const losYN = getYN('l_los_yn');
+  if(!losYN){ toast('LOS Initiated (Yes/No) is required'); return; }
+  const losDate = document.getElementById('l_los').value;
+  if(losYN === 'Yes' && !losDate){ toast('LOS Initiated Date is required'); return; }
 
-  const sanctionedAmount = document.getElementById('l_sanctionedamount').value.trim();
-  if(sanctionedAmount && (!/^[0-9]+$/.test(sanctionedAmount) || Number(sanctionedAmount) <= 0)){ toast('Sanctioned Amount must be a positive whole number'); return; }
+  let masterYN = '', masterDate = '', sanctionedAmount = '';
+  if(document.getElementById('step_master').classList.contains('show')){
+    masterYN = getYN('l_master_yn');
+    if(!masterYN){ toast('Loan Master Created (Yes/No) is required'); return; }
+    masterDate = document.getElementById('l_master').value;
+    sanctionedAmount = document.getElementById('l_sanctionedamount').value.trim();
+    if(masterYN === 'Yes'){
+      if(!masterDate){ toast('Loan Master Created Date is required'); return; }
+      if(!sanctionedAmount){ toast('Sanctioned Amount is required'); return; }
+      if(!/^[0-9]+$/.test(sanctionedAmount) || Number(sanctionedAmount) <= 0){ toast('Sanctioned Amount must be a positive whole number'); return; }
+    }
+  }
 
-  const amountDisbursed = document.getElementById('l_amountdisbursed').value.trim();
-  if(amountDisbursed && (!/^[0-9]+$/.test(amountDisbursed) || Number(amountDisbursed) <= 0)){ toast('Loan Amount Disbursed must be a positive whole number'); return; }
+  let loanAcNo = '';
+  if(document.getElementById('step_loanacno').classList.contains('show')){
+    loanAcNo = document.getElementById('l_loanacno').value.trim();
+    if(!loanAcNo){ toast('Loan A/c No. is required'); return; }
+    if(!/^[0-9]{15}$/.test(loanAcNo)){ toast('Loan A/c No. must be exactly 15 digits'); return; }
+  }
 
-  r.losYN = getYN('l_los_yn');
-  r.los = r.losYN === 'Yes' ? document.getElementById('l_los').value : '';
-  r.masterYN = getYN('l_master_yn');
-  r.master = r.masterYN === 'Yes' ? document.getElementById('l_master').value : '';
-  r.sanctionedAmount = r.masterYN === 'Yes' ? sanctionedAmount : '';
-  r.disbursedYN = getYN('l_disbursed_yn');
-  r.disbursed = r.disbursedYN === 'Yes' ? document.getElementById('l_disbursed').value : '';
-  r.amountDisbursed = r.disbursedYN === 'Yes' ? amountDisbursed : '';
+  let disbursedYN = '', disbursedDate = '', amountDisbursed = '';
+  if(document.getElementById('step_disbursed').classList.contains('show')){
+    disbursedYN = getYN('l_disbursed_yn');
+    if(!disbursedYN){ toast('Loan Disbursed (Yes/No) is required'); return; }
+    disbursedDate = document.getElementById('l_disbursed').value;
+    amountDisbursed = document.getElementById('l_amountdisbursed').value.trim();
+    if(disbursedYN === 'Yes'){
+      if(!disbursedDate){ toast('Loan Disbursed Date is required'); return; }
+      if(!amountDisbursed){ toast('Loan Amount Disbursed is required'); return; }
+      if(!/^[0-9]+$/.test(amountDisbursed) || Number(amountDisbursed) <= 0){ toast('Loan Amount Disbursed must be a positive whole number'); return; }
+    }
+  }
+
+  let disbursedMembers = '';
+  if(document.getElementById('step_membersdate').classList.contains('show')){
+    disbursedMembers = document.getElementById('l_disbursedmembers').value;
+    if(!disbursedMembers){ toast('Loan Disbursed to Individual Members Date is required'); return; }
+  }
+
+  r.losYN = losYN;
+  r.los = losYN === 'Yes' ? losDate : '';
+  r.masterYN = masterYN;
+  r.master = masterYN === 'Yes' ? masterDate : '';
+  r.sanctionedAmount = masterYN === 'Yes' ? sanctionedAmount : '';
+  r.disbursedYN = disbursedYN;
+  r.disbursed = disbursedYN === 'Yes' ? disbursedDate : '';
+  r.amountDisbursed = disbursedYN === 'Yes' ? amountDisbursed : '';
   r.loanAcNo = loanAcNo;
-  r.disbursedMembers = document.getElementById('l_disbursedmembers').value;
+  r.disbursedMembers = disbursedMembers;
   toast('Saving…');
   const ok = await updateRecordRemote(r);
   if(!ok){ toast('Save failed — check connection'); return; }
