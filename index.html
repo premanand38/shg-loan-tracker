@@ -439,17 +439,6 @@
           <option>Members are not interested</option>
         </select>
       </div>
-      <div class="field">
-        <label>SHG SB Account Number</label>
-        <input type="text" id="r_sbacname" placeholder="15-digit account number" maxlength="15" inputmode="numeric" pattern="[0-9]{15}">
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <label>Account Opened for All SHG Members</label>
-        <div class="yn" data-field="r_allacopened">
-          <button type="button" data-val="Yes">Yes</button>
-          <button type="button" data-val="No">No</button>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -465,6 +454,17 @@
 
     <div class="card" id="loan-form" style="display:none">
       <h3>Loan Progress</h3>
+      <div class="field">
+        <label>SHG SB Account Number</label>
+        <input type="text" id="l_sbacnumber" placeholder="15-digit account number" maxlength="15" inputmode="numeric" pattern="[0-9]{15}">
+      </div>
+      <div class="field">
+        <label>Account Opened for All SHG Members</label>
+        <div class="yn" data-field="l_allacopened">
+          <button type="button" data-val="Yes">Yes</button>
+          <button type="button" data-val="No">No</button>
+        </div>
+      </div>
       <div class="field">
         <label>LOS Initiated</label>
         <div class="yn" data-field="l_los_yn">
@@ -907,6 +907,8 @@ async function createRecordRemote(entry){
 async function updateRecordRemote(record){
   const payload = {
     token: SYNC_TOKEN, action: 'update', id: record.id,
+    sbAcName: record.sbAcName || '',
+    allAcOpened: record.allAcOpened || '',
     losYN: record.losYN || '', los: record.los,
     masterYN: record.masterYN || '', master: record.master,
     sanctionedAmount: record.sanctionedAmount || '',
@@ -938,7 +940,7 @@ async function deleteRecordRemote(id){
 /* ---------------- STAGE 1 SAVE ---------------- */
 function clearStage1(){
   ["r_shgname","r_members","r_loanamount","r_loanamounteligible","r_receiveddt","r_repname","r_repphone",
-   "r_cstname","r_cstphone","r_sbacname"].forEach(id=>{ document.getElementById(id).value=""; });
+   "r_cstname","r_cstphone"].forEach(id=>{ document.getElementById(id).value=""; });
   document.getElementById('r_appstatus').value = "";
   document.getElementById('r_eligibility').value = "";
   document.getElementById('r_eligibility').disabled = false;
@@ -949,7 +951,6 @@ function clearStage1(){
   document.getElementById('cond_loanamounteligible').classList.remove('show');
   setLocationFromSession();
   resetYN('r_rating');
-  resetYN('r_allacopened');
 }
 
 document.getElementById('btn-save-receiving').addEventListener('click', async ()=>{
@@ -1001,12 +1002,6 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
   const notEligibleReason = document.getElementById('r_noteligiblereason').value;
   if(eligibility === 'Not Eligible' && !notEligibleReason){ toast('Select a reason for non-eligibility'); return; }
 
-  const sbAcNumber = document.getElementById('r_sbacname').value.trim();
-  if(!sbAcNumber){ toast('SHG SB Account Number is required'); return; }
-  if(!/^[0-9]{15}$/.test(sbAcNumber)){ toast('SHG SB Account Number must be exactly 15 digits'); return; }
-
-  if(!getYN('r_allacopened')){ toast('Account Opened for All SHG Members is required'); return; }
-
   const entry = {
     id: 'A' + Date.now().toString(36).toUpperCase(),
     receivedDateTime: document.getElementById('r_receiveddt').value || new Date().toISOString().slice(0,16),
@@ -1029,8 +1024,8 @@ document.getElementById('btn-save-receiving').addEventListener('click', async ()
     eligibility: eligibility,
     loanAmountEligible: eligibility === 'Eligible' ? loanAmountEligible : '',
     notEligibleReason: notEligibleReason,
-    sbAcName: sbAcNumber,
-    allAcOpened: getYN('r_allacopened'),
+    allAcOpened: "",
+    sbAcName: "",
     losYN: "", los: "", masterYN: "", master: "", sanctionedAmount: "", disbursedYN: "", disbursed: "",
     loanAcNo: "", disbursedMembers: "",
     loggedAt: new Date().toISOString().slice(0,16).replace('T',' ')
@@ -1089,6 +1084,9 @@ function selectCase(id){
   document.getElementById('loan-selected').innerHTML =
     '<div class="selected-case"><div class="t">'+r.shgName+'</div>'+r.branchName+' · '+r.village+' · Received '+r.receivedDateTime+'</div>';
 
+  document.getElementById('l_sbacnumber').value = r.sbAcName || "";
+  setYN('l_allacopened', r.allAcOpened || '');
+
   document.getElementById('l_los').value = r.los || "";
   setYN('l_los_yn', r.losYN || (r.los ? 'Yes' : ''));
 
@@ -1115,8 +1113,8 @@ function clearStage2(){
   selectedCaseId = null;
   document.getElementById('loan-selected').innerHTML = '';
   document.getElementById('loan-form').style.display = 'none';
-  ["l_los","l_master","l_sanctionedamount","l_disbursed","l_amountdisbursed","l_loanacno","l_disbursedmembers"].forEach(id=>document.getElementById(id).value="");
-  resetYN('l_los_yn'); resetYN('l_master_yn'); resetYN('l_disbursed_yn');
+  ["l_sbacnumber","l_los","l_master","l_sanctionedamount","l_disbursed","l_amountdisbursed","l_loanacno","l_disbursedmembers"].forEach(id=>document.getElementById(id).value="");
+  resetYN('l_los_yn'); resetYN('l_master_yn'); resetYN('l_disbursed_yn'); resetYN('l_allacopened');
   updateSanctionStages();
 }
 
@@ -1124,6 +1122,13 @@ document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
   if(!selectedCaseId){ toast('Search and select an application first'); return; }
   const r = records.find(x=>x.id===selectedCaseId);
   if(!r) return;
+
+  const sbAcNumber = document.getElementById('l_sbacnumber').value.trim();
+  if(!sbAcNumber){ toast('SHG SB Account Number is required'); return; }
+  if(!/^[0-9]{15}$/.test(sbAcNumber)){ toast('SHG SB Account Number must be exactly 15 digits'); return; }
+
+  const allAcOpened = getYN('l_allacopened');
+  if(!allAcOpened){ toast('Account Opened for All SHG Members is required'); return; }
 
   const losYN = getYN('l_los_yn');
   if(!losYN){ toast('LOS Initiated (Yes/No) is required'); return; }
@@ -1169,6 +1174,8 @@ document.getElementById('btn-save-loan').addEventListener('click', async ()=>{
     if(!disbursedMembers){ toast('Loan Disbursed to Individual Members Date is required'); return; }
   }
 
+  r.sbAcName = sbAcNumber;
+  r.allAcOpened = allAcOpened;
   r.losYN = losYN;
   r.los = losYN === 'Yes' ? losDate : '';
   r.masterYN = masterYN;
