@@ -211,6 +211,7 @@
 
   <nav class="tabs" id="nav-admin" style="display:none">
     <div class="tab active" data-tab="admin-dashboard">Dashboard</div>
+    <div class="tab" data-tab="admin-analysis">Analysis</div>
     <div class="tab" data-tab="admin-coverage">Branch Coverage</div>
     <div class="tab" data-tab="admin-sanctions">Sanctions</div>
     <div class="tab" data-tab="records">Records</div>
@@ -270,6 +271,23 @@
     <div class="card">
       <h3>Eligibility</h3>
       <div class="barrow" id="ad_eligibility"></div>
+    </div>
+  </div>
+
+  <!-- ADMIN: ANALYSIS (branch / district / block wise) -->
+  <div class="panel" id="panel-admin-analysis">
+    <div class="stagehead"><div class="num">D</div><div><h2>Analysis</h2><div class="d">Branch, district, and block-wise breakdowns</div></div></div>
+    <div class="card">
+      <h3>Branch-wise</h3>
+      <div id="an_branch_table"></div>
+    </div>
+    <div class="card">
+      <h3>District-wise</h3>
+      <div id="an_district_table"></div>
+    </div>
+    <div class="card">
+      <h3>Block-wise</h3>
+      <div id="an_block_table"></div>
     </div>
   </div>
 
@@ -538,6 +556,59 @@
       <div class="stat"><div class="num" id="rec_total">0</div><div class="lab">Total records</div></div>
       <div class="stat"><div class="num" id="rec_stage2">0</div><div class="lab">Loan stage started</div></div>
     </div>
+    <div class="card" id="records_filters">
+      <h3>Filters</h3>
+      <div class="row2">
+        <div class="field">
+          <label>SHG Name</label>
+          <input type="text" id="f_shgname" placeholder="Search...">
+        </div>
+        <div class="field">
+          <label>Village</label>
+          <input type="text" id="f_village" placeholder="Search...">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Branch</label>
+          <select id="f_branch"><option value="">All</option></select>
+        </div>
+        <div class="field">
+          <label>District</label>
+          <select id="f_district"><option value="">All</option></select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Application Status</label>
+          <select id="f_appstatus">
+            <option value="">All</option>
+            <option>Complete</option>
+            <option>Not Complete</option>
+            <option>Not Received</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Eligibility</label>
+          <select id="f_eligibility">
+            <option value="">All</option>
+            <option>Eligible</option>
+            <option>Not Eligible</option>
+          </select>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Disbursed</label>
+        <select id="f_disbursed">
+          <option value="">All</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No / not yet</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0; margin-top:12px">
+        <button class="btn btn-ghost" style="width:100%" onclick="clearRecordFilters()">Clear Filters</button>
+      </div>
+    </div>
     <div id="records_body"></div>
   </div>
 
@@ -707,7 +778,7 @@ async function goTab(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id === 'panel-'+name));
   document.getElementById('bar-receiving').style.display = name === 'receiving' ? 'flex' : 'none';
   document.getElementById('bar-loan').style.display = name === 'loan' ? 'flex' : 'none';
-  const needsRefresh = ['home','records','loan','export','admin-dashboard','admin-coverage','admin-sanctions'];
+  const needsRefresh = ['home','records','loan','export','admin-dashboard','admin-analysis','admin-coverage','admin-sanctions'];
   if(needsRefresh.includes(name)){
     toast('Refreshing…');
     await loadRecords();
@@ -717,6 +788,7 @@ async function goTab(name){
   if(name === 'records') renderRecords();
   if(name === 'loan') renderLoanSearch('');
   if(name === 'admin-dashboard') renderAdminDashboard();
+  if(name === 'admin-analysis') renderAdminAnalysis();
   if(name === 'admin-coverage') renderBranchCoverage();
   if(name === 'admin-sanctions') renderSanctionsAnalysis();
 }
@@ -1363,6 +1435,67 @@ function renderDistrictStatusTable(){
 }
 
 /* ---------------- ADMIN: BRANCH COVERAGE ---------------- */
+/* ---------------- ADMIN: ANALYSIS (branch / district / block wise) ---------------- */
+function computeGroupStats(recs, groupKeyFn){
+  const groups = {};
+  recs.forEach(r => {
+    const key = groupKeyFn(r) || 'Unspecified';
+    if(!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  return Object.entries(groups).map(([name, list]) => {
+    const total = list.length;
+    const incomplete = list.filter(r => r.appStatus === 'Not Complete').length;
+    const ineligible = list.filter(r => r.eligibility === 'Not Eligible').length;
+    const sanctioned = list.filter(r => r.masterYN === 'Yes').length;
+    const pending = total - sanctioned;
+
+    const turnarounds = list
+      .filter(r => r.receivedDateTime && r.masterYN === 'Yes' && r.master)
+      .map(r => {
+        const received = new Date(dateOnly(r.receivedDateTime));
+        const sanctionedDate = new Date(dateOnly(r.master));
+        return Math.round((sanctionedDate - received) / 86400000);
+      })
+      .filter(n => !isNaN(n) && n >= 0);
+    const avgTurnaround = turnarounds.length ? Math.round(turnarounds.reduce((a,b)=>a+b,0)/turnarounds.length) : null;
+
+    // 1 SB account per member, plus 1 for the SHG itself, summed across every application in this group.
+    const sbAccountsNeeded = list.reduce((sum, r) => sum + (Number(r.members)||0) + 1, 0);
+
+    return { name, total, incomplete, ineligible, sanctioned, pending, avgTurnaround, sbAccountsNeeded };
+  }).sort((a,b) => b.total - a.total);
+}
+
+function renderGroupTable(elId, rows){
+  const el = document.getElementById(elId);
+  if(rows.length === 0){ el.innerHTML = '<div class="hint" style="color:var(--muted); font-size:12px">No data yet</div>'; return; }
+  let html = '<div class="table-wrap"><table><thead><tr>';
+  ['Name','Total','Pending','Incomplete','Ineligible','Sanctioned','Avg Turnaround (days)','SB A/Cs Needed'].forEach(h => html += '<th>'+h+'</th>');
+  html += '</tr></thead><tbody>';
+  rows.forEach(g => {
+    html += '<tr>';
+    html += '<td>'+g.name+'</td>';
+    html += '<td>'+g.total+'</td>';
+    html += '<td>'+g.pending+'</td>';
+    html += '<td>'+g.incomplete+'</td>';
+    html += '<td>'+g.ineligible+'</td>';
+    html += '<td>'+g.sanctioned+'</td>';
+    html += '<td>'+(g.avgTurnaround === null ? '–' : g.avgTurnaround)+'</td>';
+    html += '<td>'+g.sbAccountsNeeded+'</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function renderAdminAnalysis(){
+  renderGroupTable('an_branch_table', computeGroupStats(records, r => r.branchName));
+  renderGroupTable('an_district_table', computeGroupStats(records, r => r.district));
+  renderGroupTable('an_block_table', computeGroupStats(records, r => r.block));
+}
+
 function renderBranchCoverage(){
   const period = document.getElementById('coverage-period').value;
   let filtered = records;
@@ -1477,16 +1610,65 @@ function eligBadge(e){
   return badge('','blank');
 }
 
+function populateRecordFilterOptions(pool){
+  const branchSel = document.getElementById('f_branch');
+  const districtSel = document.getElementById('f_district');
+  const curBranch = branchSel.value, curDistrict = districtSel.value;
+
+  const branches = [...new Set(pool.map(r => r.branchName).filter(Boolean))].sort();
+  branchSel.innerHTML = '<option value="">All</option>' + branches.map(b=>`<option value="${b}">${b}</option>`).join('');
+  if(branches.includes(curBranch)) branchSel.value = curBranch;
+
+  const districts = [...new Set(pool.map(r => r.district).filter(Boolean))].sort();
+  districtSel.innerHTML = '<option value="">All</option>' + districts.map(d=>`<option value="${d}">${d}</option>`).join('');
+  if(districts.includes(curDistrict)) districtSel.value = curDistrict;
+}
+
+function applyRecordFilters(pool){
+  const shgQ = document.getElementById('f_shgname').value.trim().toLowerCase();
+  const villageQ = document.getElementById('f_village').value.trim().toLowerCase();
+  const branchF = document.getElementById('f_branch').value;
+  const districtF = document.getElementById('f_district').value;
+  const appStatusF = document.getElementById('f_appstatus').value;
+  const eligibilityF = document.getElementById('f_eligibility').value;
+  const disbursedF = document.getElementById('f_disbursed').value;
+
+  return pool.filter(r => {
+    if(shgQ && !(r.shgName||'').toLowerCase().includes(shgQ)) return false;
+    if(villageQ && !(r.village||'').toLowerCase().includes(villageQ)) return false;
+    if(branchF && r.branchName !== branchF) return false;
+    if(districtF && r.district !== districtF) return false;
+    if(appStatusF && r.appStatus !== appStatusF) return false;
+    if(eligibilityF && r.eligibility !== eligibilityF) return false;
+    if(disbursedF === 'Yes' && !r.disbursedMembers) return false;
+    if(disbursedF === 'No' && r.disbursedMembers) return false;
+    return true;
+  });
+}
+
+function clearRecordFilters(){
+  ['f_shgname','f_village'].forEach(id => document.getElementById(id).value = '');
+  ['f_branch','f_district','f_appstatus','f_eligibility','f_disbursed'].forEach(id => document.getElementById(id).value = '');
+  renderRecords();
+}
+
+['f_shgname','f_village'].forEach(id => document.getElementById(id).addEventListener('input', renderRecords));
+['f_branch','f_district','f_appstatus','f_eligibility','f_disbursed'].forEach(id => document.getElementById(id).addEventListener('change', renderRecords));
+
 function renderRecords(){
   const myRecords = (session && session.role === 'branch')
     ? records.filter(r => r.branchName === session.branch)
     : records;
-  document.getElementById('rec_total').textContent = myRecords.length;
-  document.getElementById('rec_stage2').textContent = myRecords.filter(r=>r.los).length;
+
+  populateRecordFilterOptions(myRecords);
+  const filtered = applyRecordFilters(myRecords);
+
+  document.getElementById('rec_total').textContent = filtered.length + (filtered.length !== myRecords.length ? ' of ' + myRecords.length : '');
+  document.getElementById('rec_stage2').textContent = filtered.filter(r=>r.los).length;
   const body = document.getElementById('records_body');
   const isAdmin = session && session.role === 'admin';
-  if(myRecords.length === 0){
-    body.innerHTML = '<div class="empty"><div class="big">☐</div>No applications logged yet.</div>';
+  if(filtered.length === 0){
+    body.innerHTML = '<div class="empty"><div class="big">☐</div>' + (myRecords.length === 0 ? 'No applications logged yet.' : 'No records match the current filters.') + '</div>';
     return;
   }
   let html = '<div class="table-wrap"><table><thead><tr>';
@@ -1494,7 +1676,7 @@ function renderRecords(){
   if(isAdmin) cols.unshift('');
   cols.forEach(h=>html += '<th>'+h+'</th>');
   html += '</tr></thead><tbody>';
-  [...myRecords].reverse().forEach(r=>{
+  [...filtered].reverse().forEach(r=>{
     html += '<tr>';
     if(isAdmin){
       html += '<td><button class="btn-ghost" style="padding:4px 10px;font-size:11px;border-radius:6px;color:var(--red);border-color:var(--red)" onclick="handleDeleteRecord(\''+r.id+'\',\''+(r.shgName||'this record').replace(/'/g,"\\'")+'\')">Delete</button></td>';
