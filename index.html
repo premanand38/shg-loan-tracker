@@ -937,13 +937,13 @@ async function loadRecords(){
         }
         return; // success — stop retrying
       } else {
-        records = [];
-        if(attempt === MAX_ATTEMPTS){ toast('Could not load records from sheet'); }
+        // Keep whatever records we already had — a failed refresh shouldn't
+        // wipe out data that was successfully loaded moments ago.
+        if(attempt === MAX_ATTEMPTS){ toast('Could not refresh from sheet — showing last-loaded data'); }
       }
     }catch(err){
-      records = [];
       if(attempt === MAX_ATTEMPTS){
-        toast('Sync unreachable — check your connection and try again');
+        toast('Sync unreachable — showing last-loaded data');
       }
     }
     if(attempt < MAX_ATTEMPTS){
