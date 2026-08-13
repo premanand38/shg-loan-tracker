@@ -817,57 +817,66 @@ function syncConfigured(){ return SYNC_URL && SYNC_URL.indexOf('PASTE_YOUR') ===
 
 async function loadRecords(){
   if(!syncConfigured()){ records = []; return; }
-  try{
-    const res = await fetch(SYNC_URL, {method:'GET'});
-    const json = await res.json();
-    if(json.status === 'ok'){
-      records = json.records.map(r => ({
-        id: r['Record ID'],
-        receivedDateTime: r['Received Date & Time'],
-        branchName: r['Branch Name'],
-        branchCode: r['Branch Code'],
-        managerName: r['Manager Name'],
-        shgName: r['SHG Name'],
-        members: r['No. of SHG Members'],
-        loanAmount: r['Loan Amount Applied (₹)'] || '',
-        repName: r['Representative Name'] || '',
-        repPhone: r['Representative Phone'] || '',
-        cstName: r['CST Name'] || '',
-        cstPhone: r['CST Phone'] || '',
-        village: r['Village Name'],
-        block: r['Block Name'],
-        district: r['District Name'],
-        rating: r['Rating Received with APO/BMM Sign'],
-        appStatus: r['Loan Application Status'],
-        notCompleteReason: r['If Not Complete'],
-        eligibility: r['Loan Eligibility Status'],
-        loanAmountEligible: r['Loan Amount Eligible (₹)'] || '',
-        notEligibleReason: r['If Not Eligible'],
-        sbAcName: r['SHG SB Account Number'],
-        allAcOpened: r['Account Opened for All Members (Y/N)'],
-        losYN: r['LOS Initiated (Y/N)'],
-        los: r['LOS Initiated Date'],
-        masterYN: r['Loan Master Created (Y/N)'],
-        master: r['Loan Master Created Date'],
-        sanctionedAmount: r['Sanctioned Amount (₹)'] || '',
-        disbursedYN: r['Loan Disbursed (Y/N)'],
-        disbursed: r['Loan Disbursed Date'],
-        amountDisbursed: r['Loan Amount Disbursed (₹)'] || '',
-        loanAcNo: r['LOAN A/c NO'],
-        disbursedMembers: r['Loan Disbursed to Individual Members Date'],
-        loggedAt: r['Logged At']
-      }));
-      if(json.warning && session && session.role === 'admin' && !rowWarningShown){
-        rowWarningShown = true;
-        toast(json.warning);
+  const MAX_ATTEMPTS = 3;
+  for(let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++){
+    try{
+      const res = await fetch(SYNC_URL, {method:'GET'});
+      const json = await res.json();
+      if(json.status === 'ok'){
+        records = json.records.map(r => ({
+          id: r['Record ID'],
+          receivedDateTime: r['Received Date & Time'],
+          branchName: r['Branch Name'],
+          branchCode: r['Branch Code'],
+          managerName: r['Manager Name'],
+          shgName: r['SHG Name'],
+          members: r['No. of SHG Members'],
+          loanAmount: r['Loan Amount Applied (₹)'] || '',
+          repName: r['Representative Name'] || '',
+          repPhone: r['Representative Phone'] || '',
+          cstName: r['CST Name'] || '',
+          cstPhone: r['CST Phone'] || '',
+          village: r['Village Name'],
+          block: r['Block Name'],
+          district: r['District Name'],
+          rating: r['Rating Received with APO/BMM Sign'],
+          appStatus: r['Loan Application Status'],
+          notCompleteReason: r['If Not Complete'],
+          eligibility: r['Loan Eligibility Status'],
+          loanAmountEligible: r['Loan Amount Eligible (₹)'] || '',
+          notEligibleReason: r['If Not Eligible'],
+          sbAcName: r['SHG SB Account Number'],
+          allAcOpened: r['Account Opened for All Members (Y/N)'],
+          losYN: r['LOS Initiated (Y/N)'],
+          los: r['LOS Initiated Date'],
+          masterYN: r['Loan Master Created (Y/N)'],
+          master: r['Loan Master Created Date'],
+          sanctionedAmount: r['Sanctioned Amount (₹)'] || '',
+          disbursedYN: r['Loan Disbursed (Y/N)'],
+          disbursed: r['Loan Disbursed Date'],
+          amountDisbursed: r['Loan Amount Disbursed (₹)'] || '',
+          loanAcNo: r['LOAN A/c NO'],
+          disbursedMembers: r['Loan Disbursed to Individual Members Date'],
+          loggedAt: r['Logged At']
+        }));
+        if(json.warning && session && session.role === 'admin' && !rowWarningShown){
+          rowWarningShown = true;
+          toast(json.warning);
+        }
+        return; // success — stop retrying
+      } else {
+        records = [];
+        if(attempt === MAX_ATTEMPTS){ toast('Could not load records from sheet'); }
       }
-    } else {
+    }catch(err){
       records = [];
-      toast('Could not load records from sheet');
+      if(attempt === MAX_ATTEMPTS){
+        toast('Sync unreachable — check your connection and try again');
+      }
     }
-  }catch(err){
-    records = [];
-    toast('Sync unreachable — check the Apps Script URL');
+    if(attempt < MAX_ATTEMPTS){
+      await new Promise(resolve => setTimeout(resolve, attempt * 1200)); // 1.2s, then 2.4s before retrying
+    }
   }
 }
 
